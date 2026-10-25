@@ -196,7 +196,7 @@ Claude Codeの`BASH_MAX_OUTPUT_LENGTH`は**文字数**、`MAX_MCP_OUTPUT_TOKENS`
 
 **コンテキスト内訳でツール定義の実際の占有量を見てから、使わないMCPやプラグインを外す。**
 
-ツール名、説明、引数スキーマは入力を増やし、選択肢が多すぎれば探索も増えます。タスクに不要な接続は外す候補ですが、「すべてのMCP定義が毎回全文送られる」とは限りません。Claude Codeでは、対応モデル・提供環境の既定設定ならツール検索で必要時に定義を読み込みます。古いモデル、ツール検索を無効にした設定、一部の提供環境などでは最初から読み込むため、遅延ロードを全環境共通の仕様として扱いません。[Claude Code公式：MCP / Configure tool search](https://code.claude.com/docs/en/mcp#configure-tool-search)
+ツール名、説明、引数スキーマは入力を増やし、選択肢が多すぎれば探索も増えます。占有量は、Claude Codeの`/context`、Cursorのチャット内のコンテキスト使用量表示などで確認できます（8-2）。タスクに不要な接続は外す候補ですが、「すべてのMCP定義が毎回全文送られる」とは限りません。Claude Codeでは、対応モデル・提供環境の既定設定ならツール検索で必要時に定義を読み込みます。古いモデル、ツール検索を無効にした設定、一部の提供環境などでは最初から読み込むため、遅延ロードを全環境共通の仕様として扱いません。[Claude Code公式：MCP / Configure tool search](https://code.claude.com/docs/en/mcp#configure-tool-search)
 
 自作エージェントでは、少数の専用ツール、ツール検索による遅延ロード、安定した定義のキャッシュを比較します。途中で定義を変える影響は原則6で扱います。
 
@@ -282,7 +282,7 @@ LangWatchの観測では、圧縮直後に修正発言が増えていました�
 - 圧縮の生成費用、直後のキャッシュ再構築、再読・再作業の費用。
 - 圧縮後に残りの呼び出しで減らせる入力料金。
 
-圧縮前には目標、制約、変更ファイル、正確なエラー、検証結果、未解決事項、次の行動を残します。短い要約と直近の履歴を併存できる実装なら、それも比較します。残す履歴の長さに普遍的な最適値はありません。
+圧縮前には目標、制約、変更ファイル、正確なエラー、検証結果、未解決事項、次の行動を残します。手段は2つです。先に2-3の進捗ファイルへ書き出してから圧縮するか、Claude Codeの`/compact <保持する内容の指示>`のように圧縮コマンドの引数や指示ファイルで保持項目を指定します。短い要約と直近の履歴を併存できる実装なら、それも比較します。残す履歴の長さに普遍的な最適値はありません。
 
 **適用条件と失敗条件：** 親の入力だけ減っても、子や再発見を足して高くなれば不採用です。圧縮やセッション切り替えの直後に同じファイルを大量に読み直すなら、引き継ぎの内容か区切り方を直します。
 
@@ -294,9 +294,9 @@ LangWatchの観測では、圧縮直後に修正発言が増えていました�
 
 **依頼文から削るのは挨拶と重複した背景だけにし、期待する挙動・制約・境界条件・関連箇所・完了条件は残す。**
 
-Smékalの実験は、Kimi K3、5つのSWE-bench Verifiedタスク、12種類の仕様、3段階の推論量、各15反復の2,700実行です。本文の主要分析は11仕様を扱い、完全仕様をユーザーストーリーだけへ縮めた場合の費用増を29.7%と推定しています。要旨ではトークン消費と表現していますが、本文はリスト価格による費用を主指標にしています。推定の幅は大きく、論文が報告する90%信用区間は+5.1〜+58.7%、95%に広げると−0.3〜+66.8%でゼロを含みます（効果が正である事後確率は0.97）。タスク間のばらつきも大きく、同じ削減で費用増が13%のタスクも115%のタスクもあります。単一モデル・限定タスクの結果であり、長いプロンプトが常に有利という意味ではありません。[論文 §3 / Table D1 / Appendix C](https://arxiv.org/html/2608.25399v1)
+残すのは、期待する挙動、制約、重要な境界条件、関連箇所、完了条件です。挨拶や重複した背景は削れます。根拠を確認していない実装方法まで固定すると、調査を遠回りさせる場合があります。入力を短くするために仕様の意味を削ると、往復と再試行が増えて総額が上がる方向に働きます。
 
-残すのは、期待する挙動、制約、重要な境界条件、関連箇所、完了条件です。挨拶や重複した背景は削れます。根拠を確認していない実装方法まで固定すると、調査を遠回りさせる場合があります。
+根拠となるSmékalの実験は、Kimi K3、5つのSWE-bench Verifiedタスク、12種類の仕様、3段階の推論量、各15反復の2,700実行です。本文の主要分析は11仕様を扱い、完全仕様をユーザーストーリーだけへ縮めた場合の費用増を29.7%と推定しています。要旨ではトークン消費と表現していますが、本文はリスト価格による費用を主指標にしています。推定の幅は大きく、論文が報告する90%信用区間は+5.1〜+58.7%、95%に広げると−0.3〜+66.8%でゼロを含みます（効果が正である事後確率は0.97）。タスク間のばらつきも大きく、同じ削減で費用増が13%のタスクも115%のタスクもあります。単一モデル・限定タスクの結果であり、長いプロンプトが常に有利という意味ではありません。[論文 §3 / Table D1 / Appendix C](https://arxiv.org/html/2608.25399v1)
 
 ### 3-2. 制約と判断基準を最初に書く
 
@@ -739,6 +739,9 @@ task_id / attempt_id / parent_task_id
 | サブエージェント（2） | `.claude/agents/`のMarkdown等。モデル・ツール・寿命を設計 | `.codex/agents/`のTOML。権限・provider・MCPは親から継承 | `.cursor/agents/`のMarkdown等。各子は独自のコンテキストを持つ | 子の入力、上限、成果、統合処理を実装 |
 | 外部記憶（2） | 進捗ファイル、memory。Projectsではproject memoryとproject instructions | 進捗ファイル、対応する記憶機能 | 進捗ファイル、ルール等。Projectsでは同期される共有コンテキストのファイル | ファイル・DB、原本と版への参照 |
 | 要約圧縮（2） | `/compact`、自動圧縮。保持項目を指定 | `/compact`、内蔵圧縮 | 自動要約。CLIは`/summarize` | 要約、直近履歴、再取得の組み合わせ |
+| 決定的処理の委譲（3） | `PostToolUse`フックで整形・lint。pre-commit、CIは共通 | `PostToolUse`フック。pre-commit、CIは共通 | `afterFileEdit`フック、保存時整形。pre-commit、CIは共通 | 整形や機械的修正をモデル呼び出しの外で実行 |
+| 共有手順（3） | スキル（`.claude/skills/`等）、指示ファイルからの必要時参照 | スキル（`.codex/skills/`等）、AGENTS.mdからの必要時参照 | スキル（`.agents/skills/`、`.cursor/skills/`）。`paths`で対象ファイルを限定 | 手順をテンプレート化し、必要時だけ読み込む |
+| ツール集約（3） | シェル・スクリプトや利用可能なコード実行 | シェル・スクリプトや利用可能な実行機能 | シェル・スクリプト等 | 複合ツール、コード実行、対応APIのProgrammatic Tool Calling |
 | 計画（4） | plan mode | `/plan` | Plan Mode、CLIの`/plan` | 計画と実行を必要な局面で分ける |
 | 段階的検証（4） | `PostToolUse`等で軽量診断。重い検証は作業単位で実行 | `PostToolUse`等。使用ツールと返却形式を確認 | `postToolUse`等。返却は`additional_context`など | 差分、依存、前回検証後の変更で実行範囲を決める |
 | 完了前検証（4） | `Stop`の継続制御＋CI | `Stop`の`decision: "block"`等＋CI | `stop`の`followup_message`＋CI | 受け入れ条件を判定。継続回数にも上限 |
@@ -748,9 +751,8 @@ task_id / attempt_id / parent_task_id
 | モデル切替（7） | `/model`、子の`model` | モデル選択、`--profile`、子の`model` | 親はモデル選択やAuto、子は`model`等。プラン・管理者制限で代替モデルになる場合あり | リクエストやタスク単位でルーティング |
 | 推論量（7） | 対応するeffort/thinking設定 | `model_reasoning_effort`等 | 選択モデルが提供する設定に従う | モデル別のreasoning/thinking設定 |
 | 計測（8） | `/usage`、`/context`、ログ、トレース | 利用量表示、ログ、対応する集計ツール | Usage画面、契約に応じたダッシュボード | usage、料金、成功率、完了時間を関連付ける |
-| ツール集約（3） | シェル・スクリプトや利用可能なコード実行 | シェル・スクリプトや利用可能な実行機能 | シェル・スクリプト等 | 複合ツール、コード実行、対応APIのProgrammatic Tool Calling |
 
-Claude Codeは[Memory](https://code.claude.com/docs/en/memory)、[Permissions](https://code.claude.com/docs/en/permissions)、[Hooks](https://code.claude.com/docs/en/hooks)、[CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)を参照してください。Codexは[AGENTS.md](https://developers.openai.com/codex/guides/agents-md)、[Configuration Reference](https://developers.openai.com/codex/config-reference)、[Hooks](https://developers.openai.com/codex/hooks)、[Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Developer commands](https://developers.openai.com/codex/cli/slash-commands)が対応します。Cursorは[Rules](https://cursor.com/docs/context/rules)、[Ignore file](https://cursor.com/docs/reference/ignore-file)、[Hooks](https://cursor.com/docs/hooks)、[Subagents](https://cursor.com/docs/subagents)、[CLI Slash commands](https://cursor.com/docs/cli/reference/slash-commands)を参照してください。
+Claude Codeは[Memory](https://code.claude.com/docs/en/memory)、[Permissions](https://code.claude.com/docs/en/permissions)、[Hooks](https://code.claude.com/docs/en/hooks)、[CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)を参照してください。Codexは[AGENTS.md](https://developers.openai.com/codex/guides/agents-md)、[Configuration Reference](https://developers.openai.com/codex/config-reference)、[Hooks](https://developers.openai.com/codex/hooks)、[Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Developer commands](https://developers.openai.com/codex/cli/slash-commands)が対応します。Cursorは[Rules](https://cursor.com/docs/rules)、[Ignore file](https://cursor.com/docs/reference/ignore-file)、[Hooks](https://cursor.com/docs/hooks)、[Subagents](https://cursor.com/docs/subagents)、[CLI Slash commands](https://cursor.com/docs/cli/reference/slash-commands)を参照してください。
 
 Gemini CLIなど、表にない製品にも8原則を適用できますが、設定名を他製品から流用しません。CursorのCloud Agentsのような実行環境、会話内のサブエージェント、Projectsのコーディネーターの3つも区別します。コーディネーターは自分ではコードを書かず、実行環境上のワーカーを起動して結果だけを受け取ります。[Cursor公式：Cloud Agents](https://cursor.com/docs/cloud-agent)、[Cursor公式：Projects](https://cursor.com/docs/agent/projects)
 
@@ -866,7 +868,7 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 - [Anthropic：Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)、[Effort](https://platform.claude.com/docs/en/build-with-claude/effort) — API固有の挙動とusage・stop_reasonの応答例。
 - [Anthropic：Optimizing for cost and intelligence](https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence) — 現行モデルに合わせたプロンプト監査。
 - [Google：Context caching](https://ai.google.dev/gemini-api/docs/caching) — 暗黙・明示方式とモデル/APIごとの対応。
-- [Cursor：Ignore file](https://cursor.com/docs/reference/ignore-file)、[Rules](https://cursor.com/docs/context/rules) — 除外の適用範囲と条件付き指示。
+- [Cursor：Ignore file](https://cursor.com/docs/reference/ignore-file)、[Rules](https://cursor.com/docs/rules) — 除外の適用範囲と条件付き指示。
 - [Devin：Billing](https://docs.devin.ai/admin/billing)、[Usage](https://docs.devin.ai/admin/billing/usage) — Self-serveとEnterprise、操作と待機時間の扱い。
 - [RTK：How RTK Savings Work](https://github.com/rtk-ai/rtk/blob/develop/docs/guide/resources/savings-explained.md) — 出力バイト削減と請求額の区別、推定トークン数。
 - [Claude Code：MCP](https://code.claude.com/docs/en/mcp) — ツール検索と遅延ロードの対応条件、例外。
