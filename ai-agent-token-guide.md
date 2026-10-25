@@ -1,6 +1,6 @@
 # AIエージェントのトークン消費を最小化する実践ガイド
 
-2026年10月25日（v4） · @YUICHIRO KINOSHITA
+2026年10月25日 · @YUICHIRO KINOSHITA
 
 ## このガイドについて
 
@@ -8,13 +8,13 @@ AIエージェントの入力、コンテキスト、ツール実行、検証、
 
 目標は、**必要な品質と完了時間を満たしながら、検証に合格したタスクあたりの総コストを下げること**です。入力が短くなっても、失敗や再実行が増えれば改善とはいえません。トークン数、金額、利用枠、待ち時間を分けて計測します。
 
-原則はv3と同じ8つです。
+原則は8つです。
 
 | 原則 | 主な対策 | 効果を確認する指標 |
 | --- | --- | --- |
 | 1. 入力を減らす | 読む範囲、指示、検索、ツール結果を絞る | 入力内訳、再読回数、探索の成功率 |
 | 2. コンテキストの寿命を管理する | セッション分割、条件付きの委譲、外部記憶、計画的な圧縮 | 親子合計の消費、引き継ぎ・再発見のコスト |
-| 3. 往復を減らす | 仕様を明確にし、定型処理と中間処理をプログラムへ移す | モデル呼び出し回数、完了時間 |
+| 3. 往復を減らす | 仕様を明確にし、決定的な処理と中間処理をプログラムへ移す | モデル呼び出し回数、完了時間 |
 | 4. やり直しを早く止める | 作業単位を区切り、段階的に検証し、実行上限を置く | 再作業率、失敗検出までの時間、上限到達率 |
 | 5. 出力を減らす | 編集結果の重複を避け、必要な報告に絞る | 可視出力、推論、途中打ち切りの内訳 |
 | 6. プロンプトキャッシュを壊さない | 再利用する先頭部分を安定させる | キャッシュ読み書き別の料金、総額 |
@@ -36,7 +36,7 @@ AIエージェントの入力、コンテキスト、ツール実行、検証、
 
 本文では、比較実験、観測結果、設計上の推論も区別します。観測上の関連だけで因果関係を断定しません。仕様の確認日は2026年10月25日です。個別の削減率は、導入先のタスク全体の削減率を保証しません。
 
-CLI、デスクトップ、クラウド実行、API直接利用は別の面として扱います。以下の設定は記載した製品・実行方式の公式仕様であり、同じ名称の機能が他の面でも使えると仮定しません。製品仕様の再点検結果は、別紙[v4 ファクトチェック記録](ai-agent-token-guide-v4-fact-check.md)に整理しています。
+CLI、デスクトップ、クラウド実行、API直接利用は別の面として扱います。以下の設定は記載した製品・実行方式の公式仕様であり、同じ名称の機能が他の面でも使えると仮定しません。各仕様の照合先は、本文の該当箇所に公式ドキュメントへのリンクとして示しています。
 
 ## なぜエージェントはトークンを消費するか
 
@@ -152,7 +152,7 @@ Cursorのプロジェクトルールは`.cursor/rules/`内の`.mdc`ファイル�
 | 意味検索 | 埋め込みによるコード検索、Claude Contextなど | 関連候補であり、正しい依存関係の証明ではない |
 | リポジトリの梱包 | Repomixなど | 全体を1ファイルにすることと、入力が小さくなることは別 |
 
-探索と実装の分離、関数・クラス単位の読み込みは有用な設計候補です。v3の二次記事だけから「研究で一般的な効果が確定した」とはせず、導入先で比較します。公式にも、シンボル移動による不要なファイル読み込みの削減が紹介されています。[Claude Code公式：Code intelligence](https://code.claude.com/docs/en/costs#install-code-intelligence-plugins-for-typed-languages)
+探索と実装の分離、関数・クラス単位の読み込みは有用な設計候補です。二次記事だけから「研究で一般的な効果が確定した」とはせず、導入先で比較します。公式にも、シンボル移動による不要なファイル読み込みの削減が紹介されています。[Claude Code公式：Code intelligence](https://code.claude.com/docs/en/costs#install-code-intelligence-plugins-for-typed-languages)
 
 Cursorの現行Search文書は、文字列・正規表現を探すInstant Grepと、広い探索を担うExploreサブエージェントを説明しています。旧「Codebase Indexing」URLもこの文書へ移ります。現在の内蔵検索を過去のブログにある埋め込み方式と同一視せず、意味検索一般の説明と分けます。[Cursor公式：Search](https://cursor.com/docs/agent/tools/search)
 
@@ -199,6 +199,10 @@ Claude Codeの`BASH_MAX_OUTPUT_LENGTH`は**文字数**、`MAX_MCP_OUTPUT_TOKENS`
 認証バグの修正後に独立した画面調整へ移るなら、新規セッションが候補です。前の作業と密接な続きなら、作業状態を残した継続のほうが安い場合もあります。
 
 Claude Codeの`/clear`、Cursorの新規チャットやCLIの`/clear`などを使います。`/resume`は過去の会話の再開であり、履歴を小さくする操作ではありません。引き継ぎが必要なら、次の2-3の形式で保存します。
+
+CursorとClaude Codeの「Projects」は、この区切りを利用者の代わりに行う仕組みです。利用者は1つの長い会話（コーディネーター）に指示を出すだけで、コーディネーターがタスクごとに新しいコンテキストのワーカー（Claude Codeではthread）を起動します。コーディネーター自身も全履歴は持たず、Cursorでは自動要約、Claude Codeでは直近のメッセージとthread、project memoryだけを見て会話を続けるので、利用者が`/clear`を打つ必要はありません。引き継ぎには、Claude Codeではproject memoryとproject instructionsを、CursorではProjectのContextファイルを使います。
+
+区切りが自動になっても、総消費は減りません。コーディネーターがワーカーの報告を読んで判断するトークンがかかり、ワーカーは並列に走り、PRを監視するワーカーはCI失敗やレビューコメントのたびに動き直します。Claude Codeでは既定のthreadがOpusの高effortで動き、公式も「単一セッションより利用枠を速く消費する」と書いています。キャッシュが切れた古いワーカーに追加指示を送ると、そのワーカーは会話全体を読み直すので、新しい作業なら新規ワーカーのほうが安いことがあります。共有ファイルは「Projectとともに育つ」ので、原則1の指示ファイルの肥大化がProject単位で起きていないか、利用者自身で見直してください。[Cursor公式：Projects](https://cursor.com/docs/agent/projects)、[Claude Code公式：Projects](https://code.claude.com/docs/en/claude-projects)
 
 ### 2-2. サブエージェントは、隔離の便益が上回るときに使う
 
@@ -287,7 +291,7 @@ TypeScriptでトークンバケット式のレートリミッタを実装する�
 
 指定すれば必ず一発で正解になるわけではありません。高コストな思い込みを減らすために、確定した条件と、調査で決めてよい条件を分けます。
 
-### 3-3. 定型処理を機械に任せる
+### 3-3. 決定的な処理はツールに任せる
 
 整形や機械的に確定する修正は、Prettier、ESLintの自動修正、Ruffなどへ移します。pre-commitやCI、編集器の保存時処理に組み込めば、モデルに整形を依頼する往復を減らせます。
 
@@ -538,7 +542,7 @@ OpenAI GPT-5.6以降の最低キャッシュ長は、可視入力1,024トーク�
 
 ヒット率は診断に役立ちますが、不要な履歴を積んでも高くなり得ます。キャッシュ書き込み、読み取り、通常入力、出力、呼び出し回数を合わせて見ます。
 
-PwCの査読前評価は、DeepResearchBench、1万トークンのシステムプロンプト、3プロバイダー4モデル、500超のセッションを対象にしています。Table 1に掲載された条件では、料金削減は41.4〜79.6%、TTFT改善は6.1〜30.9%です。要旨の範囲とは一部異なるため、v4は表の数値を使います。キャッシュなしの基準はUUIDで一致を壊す設定で、通常運用の自動キャッシュから同じだけ改善するという意味ではありません。[PwC論文 Table 1 / Methodology](https://arxiv.org/html/2601.06007v1)
+PwCの査読前評価は、DeepResearchBench、1万トークンのシステムプロンプト、3プロバイダー4モデル、500超のセッションを対象にしています。Table 1に掲載された条件では、料金削減は41.4〜79.6%、TTFT改善は6.1〜30.9%です。要旨の範囲とは一部異なるため、本ガイドでは表の数値を使います。キャッシュなしの基準はUUIDで一致を壊す設定で、通常運用の自動キャッシュから同じだけ改善するという意味ではありません。[PwC論文 Table 1 / Methodology](https://arxiv.org/html/2601.06007v1)
 
 Derivのヒット率85.8%・入力費用77%削減も、自社の料金と入力構成での結果です。入力費用の削減をタスク総額へそのまま置き換えません。[Derivの本番計測](https://derivai.substack.com/p/prompt-caching-production-ai-agent-costs)
 
@@ -573,7 +577,7 @@ Claude Codeでは子の`model`、Codexでは`.codex/agents/`の設定、Cursor�
 
 オープンウェイトの配信サービスや自前運用も候補です。単価が下がっても、成功率、長文処理、ツール呼び出し、待ち時間、運用費は別に比較します。
 
-v3の「80%以上安い」は、Atlas Cloudの特定モデル・料金比較の主張で、一般的な削減保証としては使いません。自前運用ならGPU、アイドル時間、保守なども含めます。代表タスクを試すことから始め、難易度や失敗例も含む評価集合へ広げます。[v3の比較元：Atlas Cloud](https://www.atlascloud.ai/ja/blog/tips/reduce-ai-coding-token-cost)
+「80%以上安い」という数字は、Atlas Cloudの特定モデル・料金比較の主張で、一般的な削減保証としては使いません。自前運用ならGPU、アイドル時間、保守なども含めます。代表タスクを試すことから始め、難易度や失敗例も含む評価集合へ広げます。[Atlas Cloud](https://www.atlascloud.ai/ja/blog/tips/reduce-ai-coding-token-cost)
 
 ### 7-4. 推論量を結果で調整する
 
@@ -606,7 +610,7 @@ v3の「80%以上安い」は、Atlas Cloudの特定モデル・料金比較の�
 
 ### 8-2. 内蔵表示から始め、必要な粒度だけ追加する
 
-Claude Codeの`/usage`、`/context`、料金表示やステータスライン、Codexの利用量表示・ログ、CursorのUsage画面などで、まず大まかな消費を見ます。表示項目やコマンドは利用する版で確認します。v3にあった`/cost`などが全環境で同じように使えるとは限りません。[Claude Code公式：Costs](https://code.claude.com/docs/en/costs)、[Codex公式：Developer commands](https://developers.openai.com/codex/cli/slash-commands)、[Cursor公式：Models & Pricing](https://cursor.com/docs/models-and-pricing)
+Claude Codeの`/usage`、`/context`、料金表示やステータスライン、Codexの利用量表示・ログ、CursorのUsage画面などで、まず大まかな消費を見ます。表示項目やコマンドは利用する版で確認します。`/cost`などのコマンドが全環境で同じように使えるとは限りません。[Claude Code公式：Costs](https://code.claude.com/docs/en/costs)、[Codex公式：Developer commands](https://developers.openai.com/codex/cli/slash-commands)、[Cursor公式：Models & Pricing](https://cursor.com/docs/models-and-pricing)
 
 週次集計にはccusageなどのローカルログ集計、詳細な分析にはOpenTelemetryやトレース基盤が候補です。集計ツールの対応製品・版と、キャッシュ・子の集計方法を確認します。RTKの`rtk gain`は出力削減の診断として使い、請求の代替にはしません。
 
@@ -654,9 +658,9 @@ task_id / attempt_id / parent_task_id
 | 指示の軽量化（1） | CLAUDE.md、条件付きルール、必要時のスキル。`@path`は自動読込 | AGENTS.mdの階層と読込上限を考慮 | `.cursor/rules/`内の`.mdc`の適用条件、AGENTS.md、スキル | 固定指示と作業固有の情報を分離 |
 | コードの地図（1） | LSP系プラグイン、MCPなど | 検索、必要に応じてMCPなど | Instant Grep、Explore、必要に応じてMCP | AST、LSP、意味検索を目的に応じて選択 |
 | ツール出力（1） | コマンド側の絞り込み、ラッパー、出力上限。文字数とトークン数を区別 | コマンド側の絞り込み、ラッパー、指示やフック | コマンド側で整形。MCPは対応フックの結果置換も候補 | 原本保存、要点抽出、終了状態を保持 |
-| セッション分割（2） | 新規会話、`/clear`。再開は`/resume` | 新規セッション。再開と分割を区別 | 新規チャット。CLIは`/clear` | 状態を保存し、新しい会話へ必要事項だけ移す |
+| セッション分割（2） | 新規会話、`/clear`。再開は`/resume`。Projectsではthread単位 | 新規セッション。再開と分割を区別 | 新規チャット。CLIは`/clear`。Projectsではworker単位で、コーディネーターは自動要約 | 状態を保存し、新しい会話へ必要事項だけ移す |
 | サブエージェント（2） | `.claude/agents/`のMarkdown等。モデル・ツール・寿命を設計 | `.codex/agents/`のTOML。権限・provider・MCPは親から継承 | `.cursor/agents/`のMarkdown等。各子は独自のコンテキストを持つ | 子の入力、上限、成果、統合処理を実装 |
-| 外部記憶（2） | 進捗ファイル、memory | 進捗ファイル、対応する記憶機能 | 進捗ファイル、ルール等 | ファイル・DB、原本と版への参照 |
+| 外部記憶（2） | 進捗ファイル、memory。Projectsではproject memoryとproject instructions | 進捗ファイル、対応する記憶機能 | 進捗ファイル、ルール等。ProjectsではContextファイル | ファイル・DB、原本と版への参照 |
 | 要約圧縮（2） | `/compact`、自動圧縮。保持項目を指定 | `/compact`、内蔵圧縮 | 自動要約。CLIは`/summarize` | 要約、直近履歴、再取得の組み合わせ |
 | 計画（4） | plan mode | `/plan` | Plan Mode、CLIの`/plan` | 計画と実行を必要な局面で分ける |
 | 段階的検証（4） | `PostToolUse`等で軽量診断。重い検証は作業単位で実行 | `PostToolUse`等。使用ツールと返却形式を確認 | `postToolUse`等。返却は`additional_context`など | 差分、依存、前回検証後の変更で実行範囲を決める |
@@ -671,11 +675,13 @@ task_id / attempt_id / parent_task_id
 
 Claude Codeは[Memory](https://code.claude.com/docs/en/memory)、[Permissions](https://code.claude.com/docs/en/permissions)、[Hooks](https://code.claude.com/docs/en/hooks)、[CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)を参照してください。Codexは[AGENTS.md](https://developers.openai.com/codex/guides/agents-md)、[Configuration Reference](https://developers.openai.com/codex/config-reference)、[Hooks](https://developers.openai.com/codex/hooks)、[Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Developer commands](https://developers.openai.com/codex/cli/slash-commands)が対応します。Cursorは[Rules](https://cursor.com/docs/context/rules)、[Ignore file](https://cursor.com/docs/reference/ignore-file)、[Hooks](https://cursor.com/docs/hooks)、[Subagents](https://cursor.com/docs/subagents)、[CLI Slash commands](https://cursor.com/docs/cli/reference/slash-commands)を参照してください。
 
-Gemini CLIなど、表にない製品にも8原則を適用できますが、設定名を他製品から流用しません。CursorのCloud Agentsのような実行環境と、会話内のサブエージェントも区別します。[Cursor公式：Cloud Agents](https://cursor.com/docs/cloud-agent)
+Gemini CLIなど、表にない製品にも8原則を適用できますが、設定名を他製品から流用しません。CursorのCloud Agentsのような実行環境、会話内のサブエージェント、Projectsのコーディネーターの3つも区別します。コーディネーターは自分ではコードを書かず、実行環境上のワーカーを起動して結果だけを受け取ります。[Cursor公式：Cloud Agents](https://cursor.com/docs/cloud-agent)、[Cursor公式：Projects](https://cursor.com/docs/agent/projects)
 
 ### 製品の利用枠とAPI課金を混同しない
 
 Cursorは契約によって利用枠と追加料金が異なります。確認時点のThe X Subscriptionには、Cursorモデル向けの週次の共有利用枠と、サードパーティモデル等に使うクレジットがあり、既存の旧プランは別方式です。トークンの推定料金を、そのまま自分の支払額や残量へ換算しないでください。[Cursor公式：Models & Pricing](https://cursor.com/docs/models-and-pricing)
+
+Projectsは契約で利用可否が分かれます。確認時点では、CursorはPremium以上・Teams・Enterprise・旧有料プランで使え、Free・Plus・旧Hobbyと、Privacy Mode (Legacy)では使えません。Claude CodeはProとMaxのベータで、TeamとEnterpriseには未提供です。Projectの消費は通常セッションと同じ利用枠から引かれ、Claude Codeでは上限に達したthreadが次の利用枠の回復を待って自動で続行します。[Cursor公式：Projects](https://cursor.com/docs/agent/projects)、[Claude Code公式：Projects](https://code.claude.com/docs/en/claude-projects)
 
 Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマンドクレジット、Enterpriseは契約単価のACU**です。消費は操作の数・複雑さやVM時間などに基づき、単純な経過時間課金ではありません。テスト待ちや応答待ちは、VM維持分などを除いて使用量に加算されないと説明されています。不要な探索・操作・試行錯誤を減らし、実際の利用量で比較します。[Devin公式：Billing](https://docs.devin.ai/admin/billing)、[Usage](https://docs.devin.ai/admin/billing/usage)
 
@@ -701,7 +707,7 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 - [ ] 生成物などの通常探索を絞る。ロックファイルは必要なタスクで参照できるようにする。
 - [ ] 使わないMCP・プラグインは、遅延ロードも考慮して整理する。
 - [ ] 進捗ファイルや圧縮で残す目標、制約、検証結果、正確なエラー、次の行動を決める。
-- [ ] 整形や定型修正を保存時処理、pre-commit、CIへ移す。
+- [ ] 整形など結果が一意に決まる修正を保存時処理、pre-commit、CIへ移す。
 - [ ] 編集直後は軽量診断、作業単位で関連テスト、完了前に必要な全体検証を実行する。
 - [ ] Stop系フックの無限継続や、変更のない検証の繰り返しを防ぐ。
 - [ ] 非対話実行と子の費用を含む、時間・呼び出し・予算の上限を設定する。
@@ -736,13 +742,13 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 
 ## 参考資料
 
-主要論文、LangWatch・Manusの主張、本文の重要な設定・課金・API仕様は一次資料へ戻って確認しています。以下にはv3の出典とURLを残しました。実務記事や比較記事は導入例の補助資料であり、そこにある削減率や設定を本文の一般則として採用しているわけではありません。移転した公式URLは、本文で参照した現行ページも併記しています。
+主要論文、LangWatch・Manusの主張、本文の重要な設定・課金・API仕様は一次資料へ戻って確認しています。以下に出典とURLをまとめています。実務記事や比較記事は導入例の補助資料であり、そこにある削減率や設定を本文の一般則として採用しているわけではありません。移転した公式URLは、本文で参照した現行ページも併記しています。
 
 ### 査読前論文・研究（主要な実験条件を照合）
 
 - [Don't Break the Cache: An Evaluation of Prompt Caching for Long-Horizon Agentic Tasks](https://arxiv.org/abs/2601.06007)
 - [Can your AI agent be cheaper? Investigating the effects of task specifications on token spend in agentic coding tasks](https://arxiv.org/abs/2608.25399)
-- [alphaXiv 日本語版「AIエージェントのコストは削減できるか？」](https://www.alphaxiv.org/ja/abs/2608.25399) — v3の補助リンク。数値と条件の確認には上記の原論文を使用。
+- [alphaXiv 日本語版「AIエージェントのコストは削減できるか？」](https://www.alphaxiv.org/ja/abs/2608.25399) — 補助リンク。数値と条件の確認には上記の原論文を使用。
 
 ### 企業の自社データ（観測と運用知見）
 
@@ -750,7 +756,7 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 - [Context Engineering for AI Agents: Lessons from Building Manus](https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus)
 - [How prompt caching cut our production AI agent input costs by 77%](https://derivai.substack.com/p/prompt-caching-production-ai-agent-costs)
 
-### 実務者の報告・補助資料（v3のURLを継承）
+### 実務者の報告・補助資料
 
 - [3 Simple Techniques to Reduce Token Consumption in Claude Code and Codex](https://tech.autoscout24.com/blog/posts/3-techniques-to-reduce-token-consumption-claude-code-codex/)
 - [How We Cut AI Agent Costs 25% With Prompt Caching](https://draup.com/engineering/under-the-hood/draup-agent-costs)
@@ -761,7 +767,7 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 - [AIコーディングエージェントのトークン使用量を削減する方法](https://blog.openreplay.com/ja/ai%E3%82%B3%E3%83%BC%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0%E3%82%A8%E3%83%BC%E3%82%B8%E3%82%A7%E3%83%B3%E3%83%88-token%E4%BD%BF%E7%94%A8%E9%87%8F/)
 - [23 Tips for Smart Claude Code Token Saving](https://www.analyticsvidhya.com/blog/2026/05/tips-for-claude-code-token-saving/)
 
-### 公式仕様・ベンダー資料（v3のURLを継承）
+### 公式仕様・ベンダー資料
 
 - [Claude Code: Manage costs effectively](https://code.claude.com/docs/en/costs)
 - Claude Code の [Hooks reference](https://code.claude.com/docs/en/hooks)、[Hooks guide](https://code.claude.com/docs/en/hooks-guide)、[Best practices](https://code.claude.com/docs/en/best-practices)、[Permission modes](https://code.claude.com/docs/en/permission-modes)、[CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)、[Agent SDK: agent loop](https://code.claude.com/docs/en/agent-sdk/agent-loop)
@@ -772,7 +778,7 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 - [Models & Pricing](https://cursor.com/docs/models-and-pricing)
 - [Subagents](https://cursor.com/docs/subagents)、[Cloud Agents](https://cursor.com/docs/cloud-agent)、[CLI Slash commands](https://cursor.com/docs/cli/reference/slash-commands)
 
-### v4で追加した主な一次資料
+### API仕様・設定・課金の一次資料
 
 - [OpenAI：Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching) — モデル世代別の料金、明示的境界、usage。
 - [OpenAI：Conversation state](https://developers.openai.com/api/docs/guides/conversation-state) — 状態の保持と入力課金の区別。
@@ -789,51 +795,3 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 - [Claude Code：MCP](https://code.claude.com/docs/en/mcp) — ツール検索と遅延ロードの対応条件、例外。
 - [Anthropic：Create a Message](https://platform.claude.com/docs/en/api/messages/create) — `max_tokens`、応答とusageのAPIリファレンス。
 - [Cursor：Search](https://cursor.com/docs/agent/tools/search)、[Prompting agents](https://cursor.com/docs/agent/prompting) — 現行の検索と自動要約・コンテキスト表示。
-
-## 改訂履歴
-
-### 2026年10月25日（v4 製品仕様の再点検）
-
-v4の本文・比較表に、次を追加しました。詳しい照合先は別紙[v4 ファクトチェック記録](ai-agent-token-guide-v4-fact-check.md)に記載しています。
-
-- Claude Codeの`Read` denyが編集にも及ぶ点、MCP遅延ロードと出力上限の例外。
-- フックのexec形式と`${CLAUDE_PROJECT_DIR}`、現在の検証対象を示す`cwd`の違い。
-- Claude Codeの予算上限に再開前の費用が含まれない点と、子の`maxTurns`後の再開。
-- CodexとCursorのフック返却形式、MCP結果の置換と文脈追加の違い。
-- Anthropic Programmatic Tool Callingの対象制限と、通常のスクリプトによる集約との区別。
-- OpenAIのusageフィールドの完全なパス、API別のキャッシュ読み取り率の分母。
-- Cursorのプロジェクトルールの`.mdc`形式と、子のモデル指定が代替される条件。
-- Cursorの現行Search文書と、過去の埋め込み検索の説明の区別。
-
-### 2026年10月25日（v4）
-
-直前レビューの13項目を、次のとおり反映しました。
-
-| レビュー項目 | 主な反映先 | 修正内容 |
-| --- | --- | --- |
-| ① 最適化目標 | 冒頭、費用式、8-1〜8-3 | 検証に合格したタスクあたりの総コストを主指標にし、失敗・品質・時間を含めた |
-| ② 2.5乗の一般化 | 消費の仕組み | 累積トークン量の観測と1回のAPI料金を分離した |
-| ③ Claude Codeの除外 | 1-1、比較表、チェックリスト | `.claudeignore`を訂正し、`Read` deny、適用範囲、ロックファイルの条件を記載した |
-| ④ Devinの課金 | 比較表後の課金説明 | Self-serveとEnterpriseを分け、操作とVM時間・待機を説明した |
-| ⑤ キャッシュのモデル依存 | 6-1〜6-5、8-2、比較表 | 書き込み・読み取り・保持・明示的境界・usageを区別した |
-| ⑥ 委譲の条件 | 2-2、7-1 | 起動・探索・統合の費用を加え、独立性と隔離の便益で判断する形にした |
-| ⑦ 段階的検証 | 4-3〜4-5、比較表、チェックリスト | 軽量診断、作業単位、完了前の3段階へ変更した |
-| ⑧ 検索手段の選択 | 1-3 | グラフ優先の固定手順を、目的に応じた選択表へ変えた |
-| ⑨ ツール呼び出し集約 | 3-5、比較表、チェックリスト | 中間処理をプログラムへ移す例と、効果・逆効果の条件を追加した |
-| ⑩ 重複出力の削減 | 5-1、5-4 | 直接編集とチャットでのdiff返却を使い分ける形にした |
-| ⑪ 圧縮の条件 | 2-4、6-2、チェックリスト | 「最後の手段」「常に遅め」を外し、長時間タスクでの計画的な圧縮を説明した |
-| ⑫ 根拠と一般化範囲 | 根拠の読み方、実測の節、2-4、8-1 | 出所と手法を分離し、個人ログ、LLM判定、観測と因果の違いを明示した |
-| ⑬ 古い指示の削除 | 1-2、3-4、チェックリスト | モデル更新時の指示監査と品質比較を追加した |
-
-追加の校正として、PwC論文の要旨とTable 1の数値範囲の違い、仕様比較論文の費用・トークンの表現差と推定の不確実性、出力上限の単位、APIごとのusageの集計差、Stopフックと全体実行上限の違い、再開と履歴削減の違いも修正しました。8原則、実践例、エージェント別比較表、チェックリスト、v3の出典URLを維持しています。
-
-### v3以前の履歴
-
-以下は当時の編集内容の記録です。v4の推奨と異なる点は、本文と上記の改訂内容を優先してください。
-- 2026年10月25日（v3）：原則4「やり直しを早く止める（タスク設計と検証器）」を新設し、旧原則4〜7を原則5〜8に繰り下げた。旧3-2の完了条件、旧3-3、旧3-4の検証器にあたる内容を原則4に移し、原則3は依頼文・仕様・手順化に絞った。各原則の型と文体（です・ます調）をそろえ、2-4と原則6を短くした。対応表・チェックリスト・参考資料に原則4の項目を追加
-- 2026年10月25日：原則の優先順位を「入力 > コンテキスト管理 > 往復 > 出力」に改め、原則2〜4の番号と対応表・チェックリストの参照を入れ替え。コンテキスト管理の節では、セッション分割とサブエージェントを主な手段とし、要約圧縮を「最後の手段、使うなら遅め」と位置づけ直した
-- 同日：`pnpm test` の例を「なぜエージェントはトークンを消費するか」に移し、出典どおりの表現（70万トークンではなく平均的なコンテキストでの値）に修正。遅すぎる圧縮の幅を出典どおり「約9.6万」に修正
-- 同日：推論量とサブエージェントのモデル選択の記述を当時の原則6（v3 では原則7）に集約し、他の箇所は参照のみにした。圧縮閾値の表に「窓 約100万のモデル、一人の開発者の実測」という注意を追加
-- 同日：根拠の区分を4段階（査読前論文・研究／企業の自社データ／実務者の報告／ベンダーの主張）に変更し、各節の根拠と参考資料の見出しを合わせた
-- 同日：Cursor の課金説明を現行の利用枠方式に更新し、Background Agents を Cloud Agents に、現行の公式ドキュメントに記載がない Notepads を削除。arXiv 2608.25399 の英語原題と arxiv.org のURLを追記し、リダイレクトされていた参考資料のURL（Draup、Atlas Cloud）を更新
-- 同日：チェックリストの先頭に「使用量の可視化」を移動（内蔵コマンドはインストール不要）
