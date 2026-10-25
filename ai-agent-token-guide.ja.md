@@ -132,6 +132,8 @@ Codexでは、グローバル指示に加え、プロジェクトルートから
 
 Cursorでは、プレーンなMarkdownで指示を置くならAGENTS.mdを使います。製品固有のプロジェクトルールは`.cursor/rules/`内の`.mdc`ファイルで、通常の`.md`を同じ場所へ置くだけではプロジェクトルールになりません。[Cursor公式：Rules](https://cursor.com/docs/rules)
 
+Devinでは、AGENTS.mdの各ファイルの先頭16 KiBまでが自動でコンテキストに入り、それ以降は必要に応じて読みます。重要な制約と検証コマンドを先頭に置き、長い手順はSkillsや参照先へ分けます。Memoryは個人の好みや学習事項を引き継ぐ仕組みで、チーム共通の必須手順はAGENTS.mdやSkillsに置きます。[Devin公式：AGENTS.md](https://docs.devin.ai/onboard-devin/agents-md)、[Skills](https://docs.devin.ai/product-guides/skills)、[Memory](https://docs.devin.ai/product-guides/memory)
+
 ```markdown
 ## 常時守ること
 - 公開APIの互換性を保つ。
@@ -221,6 +223,8 @@ Claude Codeの`/clear`、Cursorの新規チャットやCLIの`/clear`などを�
 CursorとClaude Codeの「Projects」のようなコーディネーター方式は、タスクごとに新しいコンテキストのワーカーを起動し、この区切りを自動化します。ただし総消費は減りません。コーディネーターがワーカーの報告を読んで判断する分、並列ワーカー、PR監視の再起動分が加わります。キャッシュが切れた古いワーカーへの追加指示は会話全体の読み直しになるため、新しい作業なら新規ワーカーのほうが安いことがあります。共有される指示や記憶はProjectとともに育つので、原則1の指示ファイルの肥大化がProject単位で起きていないかも見直します。提供条件、既定モデル、利用枠への影響は「製品の利用枠とAPI課金を混同しない」と対応表にまとめています。
 
 Codexでも、同じ不具合の追加調査は現在の会話を継続し、無関係な実装へ移るなら必要事項を引き継いで新規会話を始めます。同じ長期タスクで文脈が膨らんだ場合は、2-4の保存項目を残して`/compact`を検討します。再開、新規開始、圧縮は別の操作で、圧縮は利用枠をリセットしません。新規会話でも共通指示やコードの再読が必要なため、切り替え前後の消費を含めて比較します。[Codex公式：Developer commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli)
+
+Devin Cloudでも、同じ修正の続きは既存セッション、独立した作業は新規セッションを候補にします。ただし新規セッションはSnapshotから起動し、以前のセッション内の変更はSnapshotへ自動反映されません。引き継ぎにはコミット・成果物・検証結果を使い、ローカルパスだけでファイルや実行状態まで共有されると考えません。[Devin公式：Environment](https://docs.devin.ai/onboard-devin/environment)
 
 ### 2-2. サブエージェントは、隔離の便益が上回るときに使う
 
@@ -334,6 +338,8 @@ TypeScriptでトークンバケット式のレートリミッタを実装する�
 再現手順、調査範囲、制約、完了条件がそろった依頼をリポジトリの手順として残します。毎回全文を貼り付けず、関連作業で必要な手順だけ読ませます。
 
 手順にも適用対象と更新日を付けます。「前に効いたから」という理由で、古いモデル向けの過剰な検証や固定の探索順序を永久に残しません。
+
+Devinでは、再利用する手順を`.agents/skills/<skill-name>/SKILL.md`に保存できます。環境準備はBlueprintで定義してSnapshotから再利用し、毎回の導入方法の探索や環境修復を減らします。`initialize`はツール類、`maintenance`は依存関係、`knowledge`は検証コマンド等の参照情報です。`maintenance`はビルド時に実行され、セッション開始時には参照用に提示されますが、自動実行はされません。環境の変更を承認・ビルドした後、新規セッションで検証します。[Devin公式：Skills](https://docs.devin.ai/product-guides/skills)、[Blueprints](https://docs.devin.ai/onboard-devin/environment/blueprints)、[Blueprint reference](https://docs.devin.ai/onboard-devin/environment/blueprint-reference)
 
 ### 3-5. ツール呼び出しを集約し、中間結果をモデルに渡さない
 
@@ -648,6 +654,8 @@ Claude Codeでは子の`model`、Codexでは`.codex/agents/`の設定、Cursor�
 
 Codex CLIのプロファイル形式と比較手順は、後述の「Codex CLIでの実践例」に示します。
 
+Devin Cloudでは、エージェント選択でLite、Normal、Ultra、Fusionなどを切り替えます。利用できる選択肢は管理者設定等に依存します。通常作業と難題で使い分け、失敗と切り替えを含む使用量・合格率を比較します。SWE-2の研究プレビューにはMedium／High／Maxの推論量設定がありますが、他のモードにも同じ設定があるとは仮定しません。[Devin公式：Choosing an agent](https://docs.devin.ai/get-started/first-run#choosing-an-agent)
+
 ### 7-3. オープンウェイトは総運用費で比較する
 
 **単価ではなく、代表タスクでの成功率・待ち時間・運用費を含めた総額で比較してから採用する。**
@@ -695,6 +703,8 @@ Codex CLIのプロファイル形式と比較手順は、後述の「Codex CLI�
 
 Claude Codeの`/usage`、`/context`、料金表示やステータスライン、Codexの利用量表示・ログ、CursorのUsage画面などで、まず大まかな消費を見ます。表示項目やコマンドは利用する版で確認します。`/cost`などのコマンドが全環境で同じように使えるとは限りません。[Claude Code公式：Costs](https://code.claude.com/docs/en/costs)、[Codex公式：Developer commands](https://developers.openai.com/codex/cli/slash-commands)、[Cursor公式：Models & Pricing](https://cursor.com/docs/models-and-pricing)
 
+Devinでは、Session Insightsでセッション別の使用量と問題のタイムラインを確認します。アカウント全体はSelf-serveのUsage & limits、EnterpriseのConsumption／Consumption Analyticsで確認し、利用枠・クレジットとACUを区別します。環境不備や再試行の記録を検証結果と結び付け、親子・差し戻しを含めて比較します。Insightsの分析は原因を調べる手掛かりであり、削減効果の比較実験や内部トークン内訳の代わりではありません。[Devin公式：Usage](https://docs.devin.ai/admin/billing/usage)、[Session Insights](https://docs.devin.ai/product-guides/session-insights)
+
 週次集計にはccusageなどのローカルログ集計、詳細な分析にはOpenTelemetryやトレース基盤が候補です。集計ツールの対応製品・版と、キャッシュ・子の集計方法を確認します。RTKの`rtk gain`は出力削減の診断として使い、請求の代替にはしません。
 
 自作エージェントでは、APIごとのusageを共通形式へ正規化します。
@@ -739,30 +749,32 @@ Codex CLIでは、`/status`で残りの利用枠を、[利用状況ダッシュ�
 
 原則を実装する場所の比較です。2026年10月25日に主要な公式文書と照合していますが、提供範囲は版や実行環境で異なります。「未確認」は機能が存在しないという意味ではありません。具体的な設定をコピーするときは表の下の公式資料を確認してください。
 
-| 原則・用途 | Claude Code | Codex CLI | Cursor | 自作エージェント（API直接） |
-| --- | --- | --- | --- | --- |
-| 読む範囲（1） | 対象指定、`permissions.deny`の`Read(...)`。`.claudeignore`は無効 | 対象指定、AGENTS.md。アクセス権はサンドボックス等で別途設定 | `.cursorignore`、明示的なファイル参照。ターミナル・MCPへの制限とは区別 | ツールの検索範囲、返す情報、実行権限を設計 |
-| 指示の軽量化（1） | CLAUDE.md、条件付きルール、必要時のスキル。`@path`は自動読込 | AGENTS.mdの階層と読込上限を考慮 | AGENTS.md、`.cursor/rules/`内の`.mdc`の適用条件、スキル | 固定指示と作業固有の情報を分離 |
-| コードの地図（1） | LSP系プラグイン、MCPなど | 検索、必要に応じてMCPなど | Instant Grep、Explore、必要に応じてMCP | AST、LSP、意味検索を目的に応じて選択 |
-| ツール出力（1） | コマンド側の絞り込み、ラッパー、出力上限。文字数とトークン数を区別 | コマンド側の絞り込み、ラッパー、指示やフック | コマンド側で整形。MCPは対応フックの結果置換も候補 | 原本保存、要点抽出、終了状態を保持 |
-| セッション分割（2） | 新規会話、`/clear`。再開は`/resume`。Projectsではthread単位 | 新規セッション。再開と分割を区別 | 新規チャット。CLIは`/clear`。Projectsではworker単位で、コーディネーターは自動要約 | 状態を保存し、新しい会話へ必要事項だけ移す |
-| サブエージェント（2） | `.claude/agents/`のMarkdown等。モデル・ツール・寿命を設計 | `.codex/agents/`のTOML。権限・provider・MCPは親から継承 | `.cursor/agents/`のMarkdown等。各子は独自のコンテキストを持つ | 子の入力、上限、成果、統合処理を実装 |
-| 外部記憶（2） | 進捗ファイル、memory。Projectsではproject memoryとproject instructions | 進捗ファイル、対応する記憶機能 | 進捗ファイル、ルール等。Projectsでは同期される共有コンテキストのファイル | ファイル・DB、原本と版への参照 |
-| 要約圧縮（2） | `/compact`、自動圧縮。保持項目を指定 | `/compact`、内蔵圧縮 | 自動要約。CLIは`/summarize` | 要約、直近履歴、再取得の組み合わせ |
-| 決定的処理の委譲（3） | `PostToolUse`フックで整形・lint。pre-commit、CIは共通 | `PostToolUse`フック。pre-commit、CIは共通 | `afterFileEdit`フック、保存時整形。pre-commit、CIは共通 | 整形や機械的修正をモデル呼び出しの外で実行 |
-| 共有手順（3） | スキル（`.claude/skills/`等）、指示ファイルからの必要時参照 | スキル（`.codex/skills/`等）、AGENTS.mdからの必要時参照 | スキル（`.agents/skills/`、`.cursor/skills/`）。`paths`で対象ファイルを限定 | 手順をテンプレート化し、必要時だけ読み込む |
-| ツール集約（3） | シェル・スクリプトや利用可能なコード実行 | シェル・スクリプトや利用可能な実行機能 | シェル・スクリプト等 | 複合ツール、コード実行、対応APIのProgrammatic Tool Calling |
-| 計画（4） | plan mode | `/plan` | Plan Mode、CLIの`/plan` | 計画と実行を必要な局面で分ける |
-| 段階的検証（4） | `PostToolUse`等で軽量診断。重い検証は作業単位で実行 | `PostToolUse`等。使用ツールと返却形式を確認 | `postToolUse`等。返却は`additional_context`など | 差分、依存、前回検証後の変更で実行範囲を決める |
-| 完了前検証（4） | `Stop`の継続制御＋CI | `Stop`の`decision: "block"`等＋CI | `stop`の`followup_message`＋CI | 受け入れ条件を判定。継続回数にも上限 |
-| 実行上限（4） | printモードの`--max-turns`、`--max-budget-usd`、子の`maxTurns` | `agents.max_concurrent_threads_per_session`で同時子スレッド数を制限。全体予算を保証する共通設定は本確認では未確定。外側の監視も使う | `loop_limit`はStop系の自動継続上限。全体予算とは別 | 時間、モデル呼出し数、総費用、失敗反復を制限 |
-| 出力様式（5） | 指示と`CLAUDE_CODE_MAX_OUTPUT_TOKENS` | AGENTS.md、対応モデルの`model_verbosity` | ルール、依頼文 | API別の出力上限と様式。途中終了も処理 |
-| キャッシュ（6） | 製品側の制御。利用者は不要な変更や再起動の影響を計測 | 製品側の制御。任意のAPI設定を直接操作できるとは限らない | 利用モデルと製品側の制御に依存 | OpenAI・Anthropic・Googleのモデル/API別仕様で設定 |
-| モデル切替（7） | `/model`、子の`model` | モデル選択、`--profile`、子の`model` | 親はモデル選択やAuto、子は`model`等。プラン・管理者制限で代替モデルになる場合あり | リクエストやタスク単位でルーティング |
-| 推論量（7） | 対応するeffort/thinking設定 | `model_reasoning_effort`等 | 選択モデルが提供する設定に従う | モデル別のreasoning/thinking設定 |
-| 計測（8） | `/usage`、`/context`、ログ、トレース | `/status`、利用状況ダッシュボード、ログ。残量と累積トークンを区別 | Usage画面、契約に応じたダッシュボード | usage、料金、成功率、完了時間を関連付ける |
+| 原則・用途 | Claude Code | Codex CLI | Cursor | Devin Cloud | 自作エージェント（API直接） |
+| --- | --- | --- | --- | --- | --- |
+| 読む範囲（1） | 対象指定、`permissions.deny`の`Read(...)`。`.claudeignore`は無効 | 対象指定、AGENTS.md。アクセス権はサンドボックス等で別途設定 | `.cursorignore`、明示的なファイル参照。ターミナル・MCPへの制限とは区別 | 対象リポジトリ・パスを指定。アクセス権とは区別 | ツールの検索範囲、返す情報、実行権限を設計 |
+| 指示の軽量化（1） | CLAUDE.md、条件付きルール、必要時のスキル。`@path`は自動読込 | AGENTS.mdの階層と読込上限を考慮 | AGENTS.md、`.cursor/rules/`内の`.mdc`の適用条件、スキル | AGENTS.md（各ファイル先頭16 KiBまで自動読込）、Skills | 固定指示と作業固有の情報を分離 |
+| コードの地図（1） | LSP系プラグイン、MCPなど | 検索、必要に応じてMCPなど | Instant Grep、Explore、必要に応じてMCP | Ask Devinのコード検索、リポジトリ索引 | AST、LSP、意味検索を目的に応じて選択 |
+| ツール出力（1） | コマンド側の絞り込み、ラッパー、出力上限。文字数とトークン数を区別 | コマンド側の絞り込み、ラッパー、指示やフック | コマンド側で整形。MCPは対応フックの結果置換も候補 | コマンド側で絞り込み、原本と終了状態を保持 | 原本保存、要点抽出、終了状態を保持 |
+| セッション分割（2） | 新規会話、`/clear`。再開は`/resume`。Projectsではthread単位 | 新規セッション。再開と分割を区別 | 新規チャット。CLIは`/clear`。Projectsではworker単位で、コーディネーターは自動要約 | 新規セッション。Snapshotと作業中の状態を区別 | 状態を保存し、新しい会話へ必要事項だけ移す |
+| サブエージェント（2） | `.claude/agents/`のMarkdown等。モデル・ツール・寿命を設計 | `.codex/agents/`のTOML。権限・provider・MCPは親から継承 | `.cursor/agents/`のMarkdown等。各子は独自のコンテキストを持つ | Managed Devins。別VMの子に担当・成果・上限を指定 | 子の入力、上限、成果、統合処理を実装 |
+| 外部記憶（2） | 進捗ファイル、memory。Projectsではproject memoryとproject instructions | 進捗ファイル、対応する記憶機能 | 進捗ファイル、ルール等。Projectsでは同期される共有コンテキストのファイル | 進捗ファイル、個人のMemory。別VMへは成果物を引き継ぐ | ファイル・DB、原本と版への参照 |
+| 要約圧縮（2） | `/compact`、自動圧縮。保持項目を指定 | `/compact`、内蔵圧縮 | 自動要約。CLIは`/summarize` | 手動圧縮の共通設定は本確認では未確定。引き継ぎ情報を保存 | 要約、直近履歴、再取得の組み合わせ |
+| 決定的処理の委譲（3） | `PostToolUse`フックで整形・lint。pre-commit、CIは共通 | `PostToolUse`フック。pre-commit、CIは共通 | `afterFileEdit`フック、保存時整形。pre-commit、CIは共通 | シェルで整形・lint。pre-commit、CIは共通 | 整形や機械的修正をモデル呼び出しの外で実行 |
+| 共有手順（3） | スキル（`.claude/skills/`等）、指示ファイルからの必要時参照 | スキル（`.codex/skills/`等）、AGENTS.mdからの必要時参照 | スキル（`.agents/skills/`、`.cursor/skills/`）。`paths`で対象ファイルを限定 | Skills（`.agents/skills/`等）。環境準備はBlueprint／Snapshot | 手順をテンプレート化し、必要時だけ読み込む |
+| ツール集約（3） | シェル・スクリプトや利用可能なコード実行 | シェル・スクリプトや利用可能な実行機能 | シェル・スクリプト等 | VM上のシェル・スクリプト | 複合ツール、コード実行、対応APIのProgrammatic Tool Calling |
+| 計画（4） | plan mode | `/plan` | Plan Mode、CLIの`/plan` | Askで調査・計画、Agentで実行 | 計画と実行を必要な局面で分ける |
+| 段階的検証（4） | `PostToolUse`等で軽量診断。重い検証は作業単位で実行 | `PostToolUse`等。使用ツールと返却形式を確認 | `postToolUse`等。返却は`additional_context`など | 依頼・Skillsで検証範囲とコマンドを指定 | 差分、依存、前回検証後の変更で実行範囲を決める |
+| 完了前検証（4） | `Stop`の継続制御＋CI | `Stop`の`decision: "block"`等＋CI | `stop`の`followup_message`＋CI | 完了条件と検証手順を指定＋CI。未実行を区別 | 受け入れ条件を判定。継続回数にも上限 |
+| 実行上限（4） | printモードの`--max-turns`、`--max-budget-usd`、子の`maxTurns` | `agents.max_concurrent_threads_per_session`で同時子スレッド数を制限。全体予算を保証する共通設定は本確認では未確定。外側の監視も使う | `loop_limit`はStop系の自動継続上限。全体予算とは別 | Devin MCPで作成時にACU上限を指定可能。親子の範囲は別途管理 | 時間、モデル呼出し数、総費用、失敗反復を制限 |
+| 出力様式（5） | 指示と`CLAUDE_CODE_MAX_OUTPUT_TOKENS` | AGENTS.md、対応モデルの`model_verbosity` | ルール、依頼文 | 依頼・AGENTS.md。APIの出力上限とは区別 | API別の出力上限と様式。途中終了も処理 |
+| キャッシュ（6） | 製品側の制御。利用者は不要な変更や再起動の影響を計測 | 製品側の制御。任意のAPI設定を直接操作できるとは限らない | 利用モデルと製品側の制御に依存 | 製品側の制御。APIのキャッシュ設定を直接適用しない | OpenAI・Anthropic・Googleのモデル/API別仕様で設定 |
+| モデル切替（7） | `/model`、子の`model` | モデル選択、`--profile`、子の`model` | 親はモデル選択やAuto、子は`model`等。プラン・管理者制限で代替モデルになる場合あり | エージェント選択（Lite／Normal／Ultra／Fusion等）。管理者設定に依存 | リクエストやタスク単位でルーティング |
+| 推論量（7） | 対応するeffort/thinking設定 | `model_reasoning_effort`等 | 選択モデルが提供する設定に従う | SWE-2研究プレビューのMedium／High／Max。他モードへ一般化しない | モデル別のreasoning/thinking設定 |
+| 計測（8） | `/usage`、`/context`、ログ、トレース | `/status`、利用状況ダッシュボード、ログ。残量と累積トークンを区別 | Usage画面、契約に応じたダッシュボード | Session Insights、契約別の使用量画面 | usage、料金、成功率、完了時間を関連付ける |
 
 Claude Codeは[Memory](https://code.claude.com/docs/en/memory)、[Permissions](https://code.claude.com/docs/en/permissions)、[Hooks](https://code.claude.com/docs/en/hooks)、[CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)を参照してください。Codexは[AGENTS.md](https://developers.openai.com/codex/guides/agents-md)、[Configuration Reference](https://developers.openai.com/codex/config-reference)、[Hooks](https://developers.openai.com/codex/hooks)、[Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Developer commands](https://developers.openai.com/codex/cli/slash-commands)が対応します。Cursorは[Rules](https://cursor.com/docs/rules)、[Ignore file](https://cursor.com/docs/reference/ignore-file)、[Hooks](https://cursor.com/docs/hooks)、[Subagents](https://cursor.com/docs/subagents)、[CLI Slash commands](https://cursor.com/docs/cli/reference/slash-commands)を参照してください。
+
+Devin Cloudは[AGENTS.md](https://docs.devin.ai/onboard-devin/agents-md)、[Skills](https://docs.devin.ai/product-guides/skills)、[Memory](https://docs.devin.ai/product-guides/memory)、[Environment](https://docs.devin.ai/onboard-devin/environment)、[Managed Devins](https://docs.devin.ai/work-with-devin/advanced-capabilities#managed-devins)、[Devin MCP](https://docs.devin.ai/work-with-devin/devin-mcp)、[Your First Session](https://docs.devin.ai/get-started/first-run)、[Usage](https://docs.devin.ai/admin/billing/usage)を参照してください。表はCloudの対応であり、Devin CLI／Desktopの設定と同一視しません。
 
 Gemini CLIなど、表にない製品にも8原則を適用できますが、設定名を他製品から流用しません。CursorのCloud Agentsのような実行環境、会話内のサブエージェント、Projectsのコーディネーターの3つも区別します。コーディネーターは自分ではコードを書かず、実行環境上のワーカーを起動して結果だけを受け取ります。[Cursor公式：Cloud Agents](https://cursor.com/docs/cloud-agent)、[Cursor公式：Projects](https://cursor.com/docs/agent/projects)
 
@@ -915,6 +927,9 @@ codex --profile investigate
 - [Google：Context caching](https://ai.google.dev/gemini-api/docs/caching) — 暗黙・明示方式とモデル/APIごとの対応。
 - [Cursor：Ignore file](https://cursor.com/docs/reference/ignore-file)、[Rules](https://cursor.com/docs/rules) — 除外の適用範囲と条件付き指示。
 - [Devin：Billing](https://docs.devin.ai/admin/billing)、[Usage](https://docs.devin.ai/admin/billing/usage) — Self-serveとEnterprise、操作と待機時間の扱い。
+- [Devin：AGENTS.md](https://docs.devin.ai/onboard-devin/agents-md)、[Skills](https://docs.devin.ai/product-guides/skills)、[Memory](https://docs.devin.ai/product-guides/memory) — 指示の読込上限、共有手順、個人の記憶。
+- [Devin：Environment](https://docs.devin.ai/onboard-devin/environment)、[Blueprints](https://docs.devin.ai/onboard-devin/environment/blueprints)、[Blueprint reference](https://docs.devin.ai/onboard-devin/environment/blueprint-reference) — 環境の再利用とセッションの境界。
+- [Devin：Your First Session](https://docs.devin.ai/get-started/first-run)、[Managed Devins](https://docs.devin.ai/work-with-devin/advanced-capabilities#managed-devins)、[Devin MCP](https://docs.devin.ai/work-with-devin/devin-mcp)、[Session Insights](https://docs.devin.ai/product-guides/session-insights) — 計画・エージェント選択、子セッションと上限、使用量と問題の分析。
 - [RTK：How RTK Savings Work](https://github.com/rtk-ai/rtk/blob/develop/docs/guide/resources/savings-explained.md) — 出力バイト削減と請求額の区別、推定トークン数。
 - [Claude Code：MCP](https://code.claude.com/docs/en/mcp) — ツール検索と遅延ロードの対応条件、例外。
 - [Anthropic：Create a Message](https://platform.claude.com/docs/en/api/messages/create) — `max_tokens`、応答とusageのAPIリファレンス。
