@@ -1,6 +1,6 @@
 # AIエージェントのトークン消費を最小化する実践ガイド
 
-2026年10月25日 · @YUICHIRO KINOSHITA
+2026年10月25日 · [Kinopee](https://x.com/kinopee_ai)
 
 ## このガイドについて
 
@@ -22,6 +22,8 @@ AIエージェントの入力、コンテキスト、ツール実行、検証、
 | 8. 計測してから最適化する | 同じ評価条件で1施策ずつ比較する | 成功率、総額、完了時間の変化 |
 
 番号は説明の順序で、効果の順位ではありません。まず原則8で内訳を見て、支配的な費用から着手します。キャッシュがよく効く環境では、少量の出力や推論が金額の大きな割合を占めることもあります。
+
+各小節は太字の推奨行動1文で始まります。急ぐときはその1文と各原則末尾の「適用条件と失敗条件」、巻末のチェックリストだけを読んでも使えます。本文は、その推奨の根拠と例外です。
 
 ### 根拠の読み方
 
@@ -79,6 +81,8 @@ API料金 = Σ（通常入力 × その単価
 
 ### 1-1. 読む範囲を指定し、除外の用途を分ける
 
+**依頼文に対象ファイル・関数・症状・関連テストを書き、生成物の除外は製品の権限設定で行う。秘密情報の保護は別の仕組みで守る。**
+
 「認証周りを直して」より、対象ファイル、関数、症状、関連テストまで示すほうが探索の出発点が定まります。ただし、指定ファイルが原因とは限りません。調査で必要になった依存先は読めるようにします。
 
 ```text
@@ -111,7 +115,9 @@ Cursorの`.cursorignore`も、組み込みの参照機能とターミナル・MC
 
 ### 1-2. 指示ファイルを短くし、古い指示を監査する
 
-CLAUDE.md、AGENTS.md、`.cursor/rules`などは、読み込まれた範囲が以後の入力に影響します。適用条件、階層、遅延読み込みの有無は製品によって異なります。
+**常時指示は制約・検証コマンド・重要パスに絞り、領域固有の規則は条件付きルールや必要時に読む文書へ移す。モデル更新のたびに古い指示を削る。**
+
+AGENTS.md、CLAUDE.md、`.cursor/rules`などは、読み込まれた範囲が以後の入力に影響します。適用条件、階層、遅延読み込みの有無は製品によって異なります。
 
 - 常時必要な制約、検証コマンド、重要なパスを本体に置きます。
 - 特定領域だけの規則は条件付きルールへ、詳細手順は必要時に読む文書やスキルへ移します。
@@ -120,7 +126,7 @@ CLAUDE.md、AGENTS.md、`.cursor/rules`などは、読み込まれた範囲が�
 
 Claude Code公式はCLAUDE.mdを各200行未満に収める目安を示しています。ただし行数はトークン数ではなく、他製品共通の上限でもありません。**CLAUDE.mdの`@path`インポートは参照先も一緒に読み込むため、分割だけでは削減になりません。** 必要時の参照と自動インポートを区別します。[Claude Code公式：Memory](https://code.claude.com/docs/en/memory)
 
-Cursorのプロジェクトルールは`.cursor/rules/`内の`.mdc`ファイルです。通常の`.md`を同じ場所へ置くだけではプロジェクトルールになりません。プレーンなMarkdownで指示を置く場合はAGENTS.mdを使います。[Cursor公式：Rules](https://cursor.com/docs/rules)
+Cursorでは、プレーンなMarkdownで指示を置くならAGENTS.mdを使います。製品固有のプロジェクトルールは`.cursor/rules/`内の`.mdc`ファイルで、通常の`.md`を同じ場所へ置くだけではプロジェクトルールになりません。[Cursor公式：Rules](https://cursor.com/docs/rules)
 
 ```markdown
 ## 常時守ること
@@ -133,6 +139,8 @@ Cursorのプロジェクトルールは`.cursor/rules/`内の`.mdc`ファイル�
 古い手順が不要なツール往復や出力を増やす点は、Anthropic公式のプロンプト監査の説明とも一致します。監査を定期的に行い、「短いが必要な指示」を保ちます。[Anthropic公式：Audit prompts against the current model](https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence#audit-prompts-against-the-current-model)
 
 ### 1-3. 目的に合わせてコードの地図を使う
+
+**既知の箇所は部分Read、固定文字列は`rg`、参照関係はLSP、横断調査だけ索引やグラフを使う。**
 
 コードグラフを常に最初に引く必要はありません。次の基準で、必要な情報へ最小の探索コストで届く手段を選びます。
 
@@ -157,6 +165,8 @@ Cursorのプロジェクトルールは`.cursor/rules/`内の`.mdc`ファイル�
 Cursorの現行Search文書は、文字列・正規表現を探すInstant Grepと、広い探索を担うExploreサブエージェントを説明しています。旧「Codebase Indexing」URLもこの文書へ移ります。現在の内蔵検索を過去のブログにある埋め込み方式と同一視せず、意味検索一般の説明と分けます。[Cursor公式：Search](https://cursor.com/docs/agent/tools/search)
 
 ### 1-4. ツール出力を絞り、原本へ戻れるようにする
+
+**テストやビルドの出力はファイルへ保存し、モデルには終了コード・失敗箇所・原本パスだけ返す。**
 
 成功テストの一覧、巨大な差分、繰り返される警告を毎回渡す必要はありません。モデルへは状態、重要箇所、原本の保存先を返します。
 
@@ -184,6 +194,8 @@ Claude Codeの`BASH_MAX_OUTPUT_LENGTH`は**文字数**、`MAX_MCP_OUTPUT_TOKENS`
 
 ### 1-5. ツール定義は、実際に読み込まれる量で判断する
 
+**コンテキスト内訳でツール定義の実際の占有量を見てから、使わないMCPやプラグインを外す。**
+
 ツール名、説明、引数スキーマは入力を増やし、選択肢が多すぎれば探索も増えます。タスクに不要な接続は外す候補ですが、「すべてのMCP定義が毎回全文送られる」とは限りません。Claude Codeでは、対応モデル・提供環境の既定設定ならツール検索で必要時に定義を読み込みます。古いモデル、ツール検索を無効にした設定、一部の提供環境などでは最初から読み込むため、遅延ロードを全環境共通の仕様として扱いません。[Claude Code公式：MCP / Configure tool search](https://code.claude.com/docs/en/mcp#configure-tool-search)
 
 自作エージェントでは、少数の専用ツール、ツール検索による遅延ロード、安定した定義のキャッシュを比較します。途中で定義を変える影響は原則6で扱います。
@@ -196,15 +208,17 @@ Claude Codeの`BASH_MAX_OUTPUT_LENGTH`は**文字数**、`MAX_MCP_OUTPUT_TOKENS`
 
 ### 2-1. タスクが変わったらセッションを分ける
 
+**独立したタスクへ移るときは新規セッションを開き、必要な状態だけ2-3の形式で引き継ぐ。**
+
 認証バグの修正後に独立した画面調整へ移るなら、新規セッションが候補です。前の作業と密接な続きなら、作業状態を残した継続のほうが安い場合もあります。
 
 Claude Codeの`/clear`、Cursorの新規チャットやCLIの`/clear`などを使います。`/resume`は過去の会話の再開であり、履歴を小さくする操作ではありません。引き継ぎが必要なら、次の2-3の形式で保存します。
 
-CursorとClaude Codeの「Projects」は、この区切りを利用者の代わりに行う仕組みです。利用者は1つの長い会話（コーディネーター）に指示を出すだけで、コーディネーターがタスクごとに新しいコンテキストのワーカー（Claude Codeではthread）を起動します。コーディネーター自身も全履歴は持たず、Cursorでは自動要約、Claude Codeでは直近のメッセージとthread、project memoryだけを見て会話を続けるので、利用者が`/clear`を打つ必要はありません。引き継ぎには、Claude Codeではproject memoryとproject instructionsを、CursorではProjectのContextファイルを使います。
-
-区切りが自動になっても、総消費は減りません。コーディネーターがワーカーの報告を読んで判断するトークンがかかり、ワーカーは並列に走り、PRを監視するワーカーはCI失敗やレビューコメントのたびに動き直します。Claude Codeでは既定のthreadがOpusの高effortで動き、公式も「単一セッションより利用枠を速く消費する」と書いています。キャッシュが切れた古いワーカーに追加指示を送ると、そのワーカーは会話全体を読み直すので、新しい作業なら新規ワーカーのほうが安いことがあります。共有ファイルは「Projectとともに育つ」ので、原則1の指示ファイルの肥大化がProject単位で起きていないか、利用者自身で見直してください。[Cursor公式：Projects](https://cursor.com/docs/agent/projects)、[Claude Code公式：Projects](https://code.claude.com/docs/en/claude-projects)
+CursorとClaude Codeの「Projects」のようなコーディネーター方式は、タスクごとに新しいコンテキストのワーカーを起動し、この区切りを自動化します。ただし総消費は減りません。コーディネーターがワーカーの報告を読んで判断する分、並列ワーカー、PR監視の再起動分が加わります。キャッシュが切れた古いワーカーへの追加指示は会話全体の読み直しになるため、新しい作業なら新規ワーカーのほうが安いことがあります。共有される指示や記憶はProjectとともに育つので、原則1の指示ファイルの肥大化がProject単位で起きていないかも見直します。提供条件、既定モデル、利用枠への影響は「製品の利用枠とAPI課金を混同しない」と対応表にまとめています。
 
 ### 2-2. サブエージェントは、隔離の便益が上回るときに使う
+
+**大量の中間結果を小さな結論にできる独立した調査だけ委譲し、担当範囲・返却形式・上限を指示に書く。**
 
 大量の調査結果を親の履歴に残さず、必要な結論だけ持ち帰る用途に向いています。ただし、子の消費は無料になりません。子の起動、指示、探索、報告、親の統合まで含めて比較します。
 
@@ -228,6 +242,8 @@ CursorとClaude Codeの「Projects」は、この区切りを利用者の代わ�
 
 ### 2-3. ファイルシステムを外部記憶にする
 
+**目標・制約・変更・検証結果・未解決事項・次の行動を進捗ファイルに書き、履歴ではなくファイルから読み戻す。**
+
 進捗、決定事項、再現手順を保存し、必要な箇所だけ読み戻します。URLやファイルパスだけでは内容変更や削除に耐えられないため、再現に必要なら取得日時、コミット、抜粋やスナップショットも残します。外部化は保存と再取得のコストを移す設計です。[Manusの外部記憶設計](https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus)
 
 ```markdown
@@ -245,6 +261,8 @@ CursorとClaude Codeの「Projects」は、この区切りを利用者の代わ�
 原本、作業メモ、現在のコードが食い違えば現在の状態を再確認します。秘密情報を引き継ぎ文書へ複製する必要はありません。
 
 ### 2-4. 長時間の単一タスクは計画的に圧縮する
+
+**分割できないタスクでは、上限到達を待たず、残り作業に必要な余裕を見て区切りのよい地点で圧縮する。逐語情報は先にファイルへ残す。**
 
 要約圧縮は、過去の履歴を短い表現に置き換えて作業を続ける手段です。タスクが独立していれば分割し、一つの長いタスクを続ける必要があれば、出力や推論用の余裕を確保して圧縮します。上限に達するまで避ける必要はありません。
 
@@ -274,11 +292,15 @@ LangWatchの観測では、圧縮直後に修正発言が増えていました�
 
 ### 3-1. 仕様の意味を削らない
 
-Smékalの実験は、Kimi K3、5つのSWE-bench Verifiedタスク、12種類の仕様、3段階の推論量、各15反復の2,700実行です。本文の主要分析は11仕様を扱い、完全仕様をユーザーストーリーだけへ縮めた場合の費用増を29.7%と推定しています。要旨ではトークン消費と表現していますが、本文はリスト価格による費用を主指標にしています。推定の幅は大きく、95%信用区間はゼロを含みます。単一モデル・限定タスクの結果であり、長いプロンプトが常に有利という意味ではありません。[論文 §3 / Table D1 / Appendix C](https://arxiv.org/html/2608.25399v1)
+**依頼文から削るのは挨拶と重複した背景だけにし、期待する挙動・制約・境界条件・関連箇所・完了条件は残す。**
+
+Smékalの実験は、Kimi K3、5つのSWE-bench Verifiedタスク、12種類の仕様、3段階の推論量、各15反復の2,700実行です。本文の主要分析は11仕様を扱い、完全仕様をユーザーストーリーだけへ縮めた場合の費用増を29.7%と推定しています。要旨ではトークン消費と表現していますが、本文はリスト価格による費用を主指標にしています。推定の幅は大きく、論文が報告する90%信用区間は+5.1〜+58.7%、95%に広げると−0.3〜+66.8%でゼロを含みます（効果が正である事後確率は0.97）。タスク間のばらつきも大きく、同じ削減で費用増が13%のタスクも115%のタスクもあります。単一モデル・限定タスクの結果であり、長いプロンプトが常に有利という意味ではありません。[論文 §3 / Table D1 / Appendix C](https://arxiv.org/html/2608.25399v1)
 
 残すのは、期待する挙動、制約、重要な境界条件、関連箇所、完了条件です。挨拶や重複した背景は削れます。根拠を確認していない実装方法まで固定すると、調査を遠回りさせる場合があります。
 
 ### 3-2. 制約と判断基準を最初に書く
+
+**確定している制約・公開API・完了条件を依頼の冒頭に書き、調査で決めてよい点と区別する。**
 
 ```text
 TypeScriptでトークンバケット式のレートリミッタを実装する。
@@ -293,17 +315,23 @@ TypeScriptでトークンバケット式のレートリミッタを実装する�
 
 ### 3-3. 決定的な処理はツールに任せる
 
+**整形と機械的な自動修正はフォーマッタやリンタに任せ、保存時処理・pre-commit・CIに組み込む。**
+
 整形や機械的に確定する修正は、Prettier、ESLintの自動修正、Ruffなどへ移します。pre-commitやCI、編集器の保存時処理に組み込めば、モデルに整形を依頼する往復を減らせます。
 
 自動修正が意味を変える可能性のあるルールは、差分とテストで確かめます。型チェックやテストなどの検証は4-3の段階に分けます。
 
 ### 3-4. 成功した依頼文を共有手順にする
 
+**うまくいった依頼文は適用対象と更新日を付けてリポジトリに保存し、必要な作業でだけ読ませる。**
+
 再現手順、調査範囲、制約、完了条件がそろった依頼をリポジトリの手順として残します。毎回全文を貼り付けず、関連作業で必要な手順だけ読ませます。
 
 手順にも適用対象と更新日を付けます。「前に効いたから」という理由で、古いモデル向けの過剰な検証や固定の探索順序を永久に残しません。
 
 ### 3-5. ツール呼び出しを集約し、中間結果をモデルに渡さない
+
+**大量の取得・絞り込み・集計はスクリプトで済ませ、モデルには集計結果と原本への参照だけ返す。**
 
 取得、絞り込み、集計などをプログラム内で進め、最後の必要情報だけモデルへ返します。単に複数の結果を一度に全文返す方式より、中間データの削減が狙えます。
 
@@ -315,10 +343,11 @@ TypeScriptでトークンバケット式のレートリミッタを実装する�
 たとえば50件のCIジョブを確認するなら、プログラムが各ジョブの状態を取得し、失敗件数、該当ジョブ、重要なエラー、原本へのリンクだけを返します。成功ジョブの巨大なログをモデルへ渡す必要はありません。
 
 ```python
-# 設計を示す擬似コード。jobs、get_job、extract_errorは利用先のAPIで実装する。
+# 設計を示す例。jobs、get_job、extract_errorは利用先のAPIで実装する。
 import asyncio
 
 gate = asyncio.Semaphore(4)
+
 
 async def inspect(job):
     async with gate:
@@ -333,13 +362,19 @@ async def inspect(job):
         except Exception as exc:
             return {"job": job, "status": "fetch_failed", "error": str(exc)}
 
-results = await asyncio.gather(*(inspect(job) for job in jobs))
-report = {
-    "checked": len(results),
-    "passed": sum(r["status"] == "passed" for r in results),
-    "needs_attention": [r for r in results if r["status"] != "passed"],
-}
-# モデルにはreportを返す。取得失敗を成功扱いせず、原本を参照可能にする。
+
+async def build_report(jobs):
+    results = await asyncio.gather(*(inspect(job) for job in jobs))
+    return {
+        "checked": len(results),
+        "passed": sum(r["status"] == "passed" for r in results),
+        "needs_attention": [r for r in results if r["status"] != "passed"],
+    }
+
+
+if __name__ == "__main__":
+    report = asyncio.run(build_report(jobs))
+    # モデルにはreportを返す。取得失敗を成功扱いせず、原本を参照可能にする。
 ```
 
 独立した読み取りは上限付きで並列化できます。依存する処理はプログラム内で順番に進めます。途中で意味の判断が必要になったら、その地点でモデルへ戻します。書き込みや承認が必要な操作を、集約のために無条件で自動化する必要はありません。
@@ -358,11 +393,15 @@ AnthropicのProgrammatic Tool Callingは、この方式をコード実行環境�
 
 ### 4-1. 検証できる単位に分け、必要な判断を先に決める
 
+**大きな変更は動作を確かめられる単位に区切り、設計選択や破壊的変更があるときだけ先に短い計画を確認する。**
+
 「認証をOAuthへ置き換える」なら、トークン取得、コールバック、画面接続など、動作を確かめられる単位に区切ります。各単位の検証が通ってから次へ進めます。区切りを増やすたびに、人間の承認や新規セッションを必須にする必要はありません。
 
 複数の設計選択、破壊的変更、未確定の仕様があるときは、短い計画と確認を先に行います。対象が明確な小修正では計画作成の往復を省けます。Claude Codeのplan mode、Codex CLIの`/plan`、CursorのPlan Modeは、調査と実装を区切る選択肢です。手元の製品・版での動作を確認して使います。[Claude Code公式：Best practices](https://code.claude.com/docs/en/best-practices)、[Codex公式：Developer commands](https://developers.openai.com/codex/cli/slash-commands)、[Cursor公式：Plan Mode](https://cursor.com/docs/agent/plan-mode)
 
 ### 4-2. 完了条件と検証手段を先に渡す
+
+**完了条件・境界・実行する検証・未実行時の報告形式を依頼時に渡し、「未実行は合格ではない」と明記する。**
 
 ```text
 完了条件：期限切れrefresh tokenは401、有効なものは既存形式で成功する。
@@ -375,6 +414,8 @@ AnthropicのProgrammatic Tool Callingは、この方式をコード実行環境�
 テスト通過は、仕様のすべてを満たす証明ではありません。変更によっては再現確認、差分レビュー、画面確認も完了条件に含めます。テストを通すために期待値や検証対象を不当に弱めないことも、作業条件として明確にします。
 
 ### 4-3. 軽い検証から段階的に実行する
+
+**編集直後は変更ファイルのlintと構文診断、作業単位の完了時に関連テストと型チェック、PR前に全体検証を実行する。**
 
 | タイミング | 検証の例 | 実行量の決め方 |
 | --- | --- | --- |
@@ -405,11 +446,13 @@ Claude Codeの`.claude/settings.json`で、ファイル編集後の軽量検証�
 }
 ```
 
-`${CLAUDE_PROJECT_DIR}`はセッション開始時のプロジェクトルートです。途中でworktreeや作業ディレクトリが変わっても、このスクリプトの参照先は変わりません。検証対象の現在位置は、フックが標準入力で受け取るJSONの`cwd`等から決めます。成功時は簡潔にし、失敗時は診断と原本パスを返します。Claude Codeの`PostToolUse`では終了コード2と標準エラーでフィードバックを返せますが、すでに終わった編集を取り消す機能ではありません。`Edit|Write`だけでは、シェルや外部プロセス経由の変更は拾えません。[Claude Code公式：Hooks](https://code.claude.com/docs/en/hooks)
+`args`を指定すると、Claude Codeはシェルを介さず`command`を実行ファイルとして直接起動します（exec form）。`args`を省略すると`command`文字列がシェルに渡されます（shell form）。パスのプレースホルダーを含む場合は、引用符の扱いが単純なexec formが公式の推奨です。`${CLAUDE_PROJECT_DIR}`はセッション開始時のプロジェクトルートです。途中でworktreeや作業ディレクトリが変わっても、このスクリプトの参照先は変わりません。検証対象の現在位置は、フックが標準入力で受け取るJSONの`cwd`等から決めます。成功時は簡潔にし、失敗時は診断と原本パスを返します。Claude Codeの`PostToolUse`では終了コード2と標準エラーでフィードバックを返せますが、すでに終わった編集を取り消す機能ではありません。`Edit|Write`だけでは、シェルや外部プロセス経由の変更は拾えません。[Claude Code公式：Hooks](https://code.claude.com/docs/en/hooks)
 
 Codexには`PostToolUse`、Cursorには`postToolUse`がありますが、入力形式、ツール名、返却フィールドは別です。Codexでは`apply_patch`に対して`Edit`・`Write`というmatcherの別名も使え、追加文脈は`hookSpecificOutput.additionalContext`です。Cursorでは`additional_context`を使います。Cursorの`updated_mcp_tool_output`はMCP結果の置換用で、一般のターミナル出力を置換するフィールドではありません。文脈を後から追加するだけでは、元の巨大な結果の入力削減にはなりません。[Codex公式：Hooks](https://developers.openai.com/codex/hooks)、[Cursor公式：Hooks](https://cursor.com/docs/hooks)
 
 ### 4-4. 完了前の検証と、停止フックの再試行を制御する
+
+**Stop系フックは未検証の差分か修正可能な失敗があるときだけ継続させ、同じ原因の反復や外部要因では未完了として終了させる。**
 
 完了前に、今回の変更に対して必要な検証が終わっていることを確かめます。次の条件なら、すでに成功した同じ検証の再実行を省けます。
 
@@ -425,20 +468,22 @@ CI側では必要なステータスチェックをマージ条件にします。
 
 ### 4-5. 指示文と別に、実行上限を置く
 
+**非対話実行と子エージェントには、ターン数・時間・予算の上限を設定で置き、上限到達を完了と区別して記録する。**
+
 「この仕事だけ実行して止まる」と書くだけでは、繰り返しを確実に抑えられません。モデル呼び出し、ツール呼び出し、経過時間、親子合計の予算に上限を置きます。
 
 | 実装 | 使える制御の例 | 限界 |
 | --- | --- | --- |
 | Claude Code | printモードの`--max-turns`、`--max-budget-usd`、子の`maxTurns` | ターンとツール数は別。予算は推定値で、処理中に超過し得る |
 | Cursor | `stop` / `subagentStop`の`loop_limit` | 自動継続の上限であり、セッション全体の予算上限ではない。既定はスクリプトごとに5回 |
-| Codex CLI | 実行側の時間・呼び出し監視、利用環境に応じた制限 | この確認範囲で全体のターン数・金額を必ず制限する共通CLI設定は確定できなかった |
+| Codex CLI | `agents.max_concurrent_threads_per_session`（同時に開ける子スレッド数。旧名`agents.max_threads`）、実行側の時間・呼び出し監視 | 同時数の上限であり、ターン数・金額の上限ではない。全体の総量を必ず制限する共通CLI設定は、この確認範囲では確定できなかった |
 | 自作エージェント | 呼び出し前の予算判定、タイムアウト、失敗回数、子への予算割り当て | 最後のリクエスト分は超過し得るため、余裕を残す |
 
-[Claude Code公式：CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)、[Cursor公式：Hooks](https://cursor.com/docs/hooks)
+[Claude Code公式：CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)、[Codex公式：Configuration Reference](https://developers.openai.com/codex/config-reference)、[Cursor公式：Hooks](https://cursor.com/docs/hooks)
 
 Claude Codeの`--max-budget-usd`には今回の実行中の子の費用も含まれますが、`--continue`・`--resume`で復元した過去の実行分は含まれません。複数回の起動をまたぐタスク総予算は、外側で集計します。子の`maxTurns`も、その到達後に子を再開できるため、タスク全体の永続的な上限とは別です。
 
-Claude CodeのStopフックには連続継続の上限がありますが、ツール呼び出しで連続回数がリセットされるため、セッション全体の停止保証には使えません。`stop_hook_active`などを見て循環を避け、別に全体上限を設けます。[Claude Code公式：Stop input](https://code.claude.com/docs/en/hooks#stop)
+Claude CodeのStopフックには連続継続の上限（既定8回、`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`で変更）がありますが、ツール呼び出しで連続回数がリセットされるため、セッション全体の停止保証には使えません。`stop_hook_active`などを見て循環を避け、別に全体上限を設けます。[Claude Code公式：Stop input](https://code.claude.com/docs/en/hooks#stop)
 
 運用例として「同一エラーが2回続いたら原因仮説を更新し、新しい根拠が得られなければ未完了として返す」と決められます。回数は例で、通信の一時障害とコードの論理エラーを同じ扱いにする必要はありません。上限到達を完了とせず、残作業と再開条件を記録します。
 
@@ -449,6 +494,8 @@ Claude CodeのStopフックには連続継続の上限がありますが、ツ�
 必要な成果と検証結果を残し、同じ内容を何度も生成しないようにします。出力はその場の料金だけでなく、履歴に残る範囲では次の入力にも影響します。可視の文章、ツール引数、内部推論を分けて見ます。
 
 ### 5-1. 編集結果を最終回答で重複させない
+
+**編集は編集ツールで適用し、最終回答は変更点・検証結果・未解決事項に絞る。全文やdiffの再掲は求められたときだけにする。**
 
 ファイルを直接編集できるエージェントでは、編集ツールで変更し、最終回答は変更点、検証、未解決事項を簡潔に示します。全文やdiffの再掲を常時必須にすると重複が増えます。
 
@@ -466,6 +513,8 @@ Claude CodeのStopフックには連続継続の上限がありますが、ツ�
 
 ### 5-2. 冗長度と出力上限を区別する
 
+**回答の詳しさは冗長度の設定や指示で下げ、出力上限は途中打ち切りを起こさない値に保つ。**
+
 冗長度は回答の詳しさ、出力上限は生成の上限です。上限を下げるだけでは、途中で切れて再生成が増えることがあります。
 
 | 製品・API | 設定例 | 注意 |
@@ -479,9 +528,13 @@ Claude CodeのStopフックには連続継続の上限がありますが、ツ�
 
 ### 5-3. 可視出力を短くしても、推論が減るとは限らない
 
+**推論トークンを減らしたいときは、回答の長さではなく推論量の設定を変え、usageで確認する。**
+
 「回答は3行で」と指示しても、内部推論の使用量が同じだけ減るとは限りません。推論量は原則7で調整し、usageで確認します。OpenAIの推論トークンは出力として課金され、出力上限に達すると可視回答が出る前に終了する場合もあります。[OpenAI公式：Reasoning models](https://developers.openai.com/api/docs/guides/reasoning)
 
 ### 5-4. 小さな変更では必要な範囲だけ編集する
+
+**小さな修正は部分編集ツールで行い、自動生成ファイルは生成器を実行し直す。**
 
 1行の修正のために巨大ファイルを再生成せず、部分編集ツールを使います。自分で確実に直せる誤字なら、人が直接直すのも選択肢です。
 
@@ -495,6 +548,8 @@ Claude CodeのStopフックには連続継続の上限がありますが、ツ�
 
 ### 6-1. 再利用する先頭部分を安定させる
 
+**共通指示・ツール定義・固定資料を先頭に置き、時刻や今回の依頼など毎回変わる情報は後ろに置く。**
+
 共通の指示、ツール、固定資料を前に、今回だけ変わる情報を後ろに置きます。時刻が必要なら正しい時刻を残しつつ、秒ごとに変わる値を固定指示の先頭へ埋め込まないようにします。
 
 ```text
@@ -505,6 +560,8 @@ Claude CodeのStopフックには連続継続の上限がありますが、ツ�
 JSONなどのシリアライズ順も安定させます。ある位置の変更で、それ以降の同一プレフィックスの再利用が失われ得ますが、それより前の一致部分まで必ず消えるわけではありません。
 
 ### 6-2. 追記を基本にしつつ、不要な履歴は計画的に整理する
+
+**続行中は履歴を書き換えずに追記し、圧縮や切り替えはキャッシュ再構築の費用を残りの入力削減が上回るときに行う。**
 
 続行中は過去のメッセージを不用意に書き換えず、新しい情報を追記します。ただし、キャッシュを守るために不要な履歴を永久に保持しません。圧縮や切り替えでキャッシュが減っても、以後の総額が下がれば採用できます。
 
@@ -519,18 +576,22 @@ JSONなどのシリアライズ順も安定させます。ある位置の変更�
 
 ### 6-3. ツール定義の変更と遅延ロードを比較する
 
+**少数のツールなら定義と順序を固定し、多数ならツール検索や遅延ロードを使う。セッション途中で定義を変えない。**
+
 ツールの名前、スキーマ、順序が変わると、対応するキャッシュの一致に影響します。一方、使わない定義を減らすことにも便益があります。
 
 少数のツールなら安定した定義、多数ならツール検索や遅延ロードが候補です。履歴にあるツール呼び出しと結果の対応を壊さず、提供APIが支える方式を使います。Manusのlogitマスクは独自実装の知見で、すべてのAPIで同じ制御ができるわけではありません。
 
 ### 6-4. プロバイダー・モデルごとの仕様を使う
 
+**使うモデルの最低キャッシュ長・保持時間・書き込み倍率・読み取り倍率を公式料金表で確認し、他モデルの値を流用しない。**
+
 | API・モデル群 | キャッシュの方式 | 料金・条件の例 |
 | --- | --- | --- |
 | OpenAI GPT-5.6以降 | 自動と明示的な境界に対応 | 既定30分の書き込みは通常入力の1.25倍。読み取りは多くで0.1倍、GPT-6.1 Solでは0.05倍。Responses APIの12時間保持は書き込み2.5倍 |
 | OpenAIのそれ以前のモデル | 自動。保持・最低長などはモデル別 | 新しいモデル群の設定や書き込み料金をそのまま流用しない |
 | Anthropic Messages API | `cache_control`による自動キャッシュまたは明示的境界 | 5分・1時間の保持、書き込み割増、読み取り割引。倍率と最低長はモデル別 |
-| Gemini API | 対応モデルの暗黙キャッシュ。旧モデル・APIには明示的方式もある | Interactions API、およびGemini 4 Argon以降は明示的キャッシュ非対応。旧方式の保存料金も確認する |
+| Gemini API | 対応モデルの暗黙キャッシュ。旧モデル・APIには明示的方式もある | Interactions API、およびGemini 4 Argon以降は明示的キャッシュ非対応。Gemini 4以降のマルチターンでは、新規追加が2,050トークン未満だと直前リクエストの末尾2,050トークンを通常入力として再処理する。旧方式の保存料金も確認する |
 
 [OpenAI公式：Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)、[Anthropic公式：Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)、[Google公式：Context caching](https://ai.google.dev/gemini-api/docs/caching)
 
@@ -539,6 +600,8 @@ OpenAI GPT-5.6以降の最低キャッシュ長は、可視入力1,024トーク�
 書き込みと読み取りの単価は別区分です。たとえば、通常入力単価を1、書き込みを1.25、読み取りを0.1と仮定すると、同じ先頭部分を1回書いて1回読む費用は1.35、毎回通常入力なら2です。1回で終わる内容には再利用の利益がありません。この計算は先頭部分だけを対象にし、残りの入力や出力を含みません。
 
 ### 6-5. ヒット率より、品質を保った総額を見る
+
+**キャッシュの効果は、書き込み・読み取り・通常入力・出力を合わせた総額と合格率で判定し、ヒット率は診断にだけ使う。**
 
 ヒット率は診断に役立ちますが、不要な履歴を積んでも高くなり得ます。キャッシュ書き込み、読み取り、通常入力、出力、呼び出し回数を合わせて見ます。
 
@@ -563,11 +626,15 @@ Derivのヒット率85.8%・入力費用77%削減も、自社の料金と入力�
 
 ### 7-1. 委譲と、単一モデルの推論量調整を比較する
 
+**独立しない短い仕事は委譲せず、単一モデルの推論量を下げて試す。委譲は2-2の条件を満たすときに使う。**
+
 親が計画と統合を担い、境界の明確な仕事を子へ渡す構成は候補の一つです。独立しない短い仕事では、委譲の準備より、単一モデルの推論量を下げるほうが安い可能性があります。2-2の委譲条件を先に確かめます。
 
 Claude Codeでは子の`model`、Codexでは`.codex/agents/`の設定、Cursorでは`.cursor/agents/`などで役割を定義できます。継承される権限、ツール、指示、モデル既定値は同一ではありません。モデル名だけを変更して比較せず、推論量も記録します。[Claude Code公式：Subagents](https://code.claude.com/docs/en/sub-agents)、[Codex公式：Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Cursor公式：Subagents](https://cursor.com/docs/subagents)
 
 ### 7-2. タスク境界でプロファイルを選ぶ
+
+**モデル・推論量・出力様式をまとめた数種類のプロファイルを用意し、タスクの開始時に選ぶ。上位への切り替え基準も先に決める。**
 
 「定型編集」「通常実装」「難題」のような設定を用意し、モデル、推論量、出力様式をまとめて選びます。変更はタスク境界で行い、途中切り替えに伴うキャッシュの再構築や引き継ぎも記録します。
 
@@ -575,11 +642,15 @@ Claude Codeでは子の`model`、Codexでは`.codex/agents/`の設定、Cursor�
 
 ### 7-3. オープンウェイトは総運用費で比較する
 
+**単価ではなく、代表タスクでの成功率・待ち時間・運用費を含めた総額で比較してから採用する。**
+
 オープンウェイトの配信サービスや自前運用も候補です。単価が下がっても、成功率、長文処理、ツール呼び出し、待ち時間、運用費は別に比較します。
 
 「80%以上安い」という数字は、Atlas Cloudの特定モデル・料金比較の主張で、一般的な削減保証としては使いません。自前運用ならGPU、アイドル時間、保守なども含めます。代表タスクを試すことから始め、難易度や失敗例も含む評価集合へ広げます。[Atlas Cloud](https://www.atlascloud.ai/ja/blog/tips/reduce-ai-coding-token-cost)
 
 ### 7-4. 推論量を結果で調整する
+
+**推論量は低めから始め、検証失敗や原因調査の停滞を根拠に上げる。設定値・usage・合格率を一緒に記録する。**
 
 単純な誤字修正は低めから、難しい原因調査は必要に応じて上げます。「常に最大」も「常に最小」も標準にはしません。推論を増やすと1回の費用は増えても、再試行が減る場合があります。
 
@@ -592,6 +663,8 @@ Claude Codeでは子の`model`、Codexでは`.codex/agents/`の設定、Cursor�
 消費量、請求、品質、時間を別々に記録し、同じタスク定義で比べます。失敗した試行を集計から落とさないことが出発点です。
 
 ### 8-1. 成功タスクあたりの総コストを主指標にする
+
+**失敗試行・子エージェント・差し戻しを含む総費用を合格タスク数で割った値を主指標にし、他の指標は内訳として扱う。**
 
 | 指標 | 何を見るか | 注意 |
 | --- | --- | --- |
@@ -609,6 +682,8 @@ Claude Codeでは子の`model`、Codexでは`.codex/agents/`の設定、Cursor�
 コンテキストの「利用率」は二つの意味で混同されがちです。窓の占有率は取得できても、モデルの判断にどの情報が実際に寄与したかはusageだけではわかりません。LangWatchの後者の数値も、内部の注意機構を直接測った値ではなく、判定による推定です。
 
 ### 8-2. 内蔵表示から始め、必要な粒度だけ追加する
+
+**まず製品の使用量表示で内訳を見て、週次集計や自作エージェントではusageを共通形式に正規化して記録する。**
 
 Claude Codeの`/usage`、`/context`、料金表示やステータスライン、Codexの利用量表示・ログ、CursorのUsage画面などで、まず大まかな消費を見ます。表示項目やコマンドは利用する版で確認します。`/cost`などのコマンドが全環境で同じように使えるとは限りません。[Claude Code公式：Costs](https://code.claude.com/docs/en/costs)、[Codex公式：Developer commands](https://developers.openai.com/codex/cli/slash-commands)、[Cursor公式：Models & Pricing](https://cursor.com/docs/models-and-pricing)
 
@@ -638,6 +713,8 @@ task_id / attempt_id / parent_task_id
 
 ### 8-3. 同じ条件で、1施策ずつ比較する
 
+**タスク群と受け入れ条件を固定し、1施策だけ変えて、失敗を含む総額・合格率・完了時間で採否を決める。**
+
 1. 代表的なタスク群と受け入れ条件を固定します。簡単な成功例だけでなく、難題や失敗しやすい例を含めます。
 2. 基準構成の総額、合格率、完了時間を記録します。確率的な変動が大きければ反復します。
 3. 出力ラッパー、検索方法、推論量など、1施策だけ変えます。
@@ -655,17 +732,17 @@ task_id / attempt_id / parent_task_id
 | 原則・用途 | Claude Code | Codex CLI | Cursor | 自作エージェント（API直接） |
 | --- | --- | --- | --- | --- |
 | 読む範囲（1） | 対象指定、`permissions.deny`の`Read(...)`。`.claudeignore`は無効 | 対象指定、AGENTS.md。アクセス権はサンドボックス等で別途設定 | `.cursorignore`、明示的なファイル参照。ターミナル・MCPへの制限とは区別 | ツールの検索範囲、返す情報、実行権限を設計 |
-| 指示の軽量化（1） | CLAUDE.md、条件付きルール、必要時のスキル。`@path`は自動読込 | AGENTS.mdの階層と読込上限を考慮 | `.cursor/rules/`内の`.mdc`の適用条件、AGENTS.md、スキル | 固定指示と作業固有の情報を分離 |
+| 指示の軽量化（1） | CLAUDE.md、条件付きルール、必要時のスキル。`@path`は自動読込 | AGENTS.mdの階層と読込上限を考慮 | AGENTS.md、`.cursor/rules/`内の`.mdc`の適用条件、スキル | 固定指示と作業固有の情報を分離 |
 | コードの地図（1） | LSP系プラグイン、MCPなど | 検索、必要に応じてMCPなど | Instant Grep、Explore、必要に応じてMCP | AST、LSP、意味検索を目的に応じて選択 |
 | ツール出力（1） | コマンド側の絞り込み、ラッパー、出力上限。文字数とトークン数を区別 | コマンド側の絞り込み、ラッパー、指示やフック | コマンド側で整形。MCPは対応フックの結果置換も候補 | 原本保存、要点抽出、終了状態を保持 |
 | セッション分割（2） | 新規会話、`/clear`。再開は`/resume`。Projectsではthread単位 | 新規セッション。再開と分割を区別 | 新規チャット。CLIは`/clear`。Projectsではworker単位で、コーディネーターは自動要約 | 状態を保存し、新しい会話へ必要事項だけ移す |
 | サブエージェント（2） | `.claude/agents/`のMarkdown等。モデル・ツール・寿命を設計 | `.codex/agents/`のTOML。権限・provider・MCPは親から継承 | `.cursor/agents/`のMarkdown等。各子は独自のコンテキストを持つ | 子の入力、上限、成果、統合処理を実装 |
-| 外部記憶（2） | 進捗ファイル、memory。Projectsではproject memoryとproject instructions | 進捗ファイル、対応する記憶機能 | 進捗ファイル、ルール等。ProjectsではContextファイル | ファイル・DB、原本と版への参照 |
+| 外部記憶（2） | 進捗ファイル、memory。Projectsではproject memoryとproject instructions | 進捗ファイル、対応する記憶機能 | 進捗ファイル、ルール等。Projectsでは同期される共有コンテキストのファイル | ファイル・DB、原本と版への参照 |
 | 要約圧縮（2） | `/compact`、自動圧縮。保持項目を指定 | `/compact`、内蔵圧縮 | 自動要約。CLIは`/summarize` | 要約、直近履歴、再取得の組み合わせ |
 | 計画（4） | plan mode | `/plan` | Plan Mode、CLIの`/plan` | 計画と実行を必要な局面で分ける |
 | 段階的検証（4） | `PostToolUse`等で軽量診断。重い検証は作業単位で実行 | `PostToolUse`等。使用ツールと返却形式を確認 | `postToolUse`等。返却は`additional_context`など | 差分、依存、前回検証後の変更で実行範囲を決める |
 | 完了前検証（4） | `Stop`の継続制御＋CI | `Stop`の`decision: "block"`等＋CI | `stop`の`followup_message`＋CI | 受け入れ条件を判定。継続回数にも上限 |
-| 実行上限（4） | printモードの`--max-turns`、`--max-budget-usd`、子の`maxTurns` | 全体予算を保証する共通設定は本確認では未確定。外側の監視も使う | `loop_limit`はStop系の自動継続上限。全体予算とは別 | 時間、モデル呼出し数、総費用、失敗反復を制限 |
+| 実行上限（4） | printモードの`--max-turns`、`--max-budget-usd`、子の`maxTurns` | `agents.max_concurrent_threads_per_session`で同時子スレッド数を制限。全体予算を保証する共通設定は本確認では未確定。外側の監視も使う | `loop_limit`はStop系の自動継続上限。全体予算とは別 | 時間、モデル呼出し数、総費用、失敗反復を制限 |
 | 出力様式（5） | 指示と`CLAUDE_CODE_MAX_OUTPUT_TOKENS` | AGENTS.md、対応モデルの`model_verbosity` | ルール、依頼文 | API別の出力上限と様式。途中終了も処理 |
 | キャッシュ（6） | 製品側の制御。利用者は不要な変更や再起動の影響を計測 | 製品側の制御。任意のAPI設定を直接操作できるとは限らない | 利用モデルと製品側の制御に依存 | OpenAI・Anthropic・Googleのモデル/API別仕様で設定 |
 | モデル切替（7） | `/model`、子の`model` | モデル選択、`--profile`、子の`model` | 親はモデル選択やAuto、子は`model`等。プラン・管理者制限で代替モデルになる場合あり | リクエストやタスク単位でルーティング |
@@ -681,7 +758,7 @@ Gemini CLIなど、表にない製品にも8原則を適用できますが、設
 
 Cursorは契約によって利用枠と追加料金が異なります。確認時点のThe X Subscriptionには、Cursorモデル向けの週次の共有利用枠と、サードパーティモデル等に使うクレジットがあり、既存の旧プランは別方式です。トークンの推定料金を、そのまま自分の支払額や残量へ換算しないでください。[Cursor公式：Models & Pricing](https://cursor.com/docs/models-and-pricing)
 
-Projectsは契約で利用可否が分かれます。確認時点では、CursorはPremium以上・Teams・Enterprise・旧有料プランで使え、Free・Plus・旧Hobbyと、Privacy Mode (Legacy)では使えません。Claude CodeはProとMaxのベータで、TeamとEnterpriseには未提供です。Projectの消費は通常セッションと同じ利用枠から引かれ、Claude Codeでは上限に達したthreadが次の利用枠の回復を待って自動で続行します。[Cursor公式：Projects](https://cursor.com/docs/agent/projects)、[Claude Code公式：Projects](https://code.claude.com/docs/en/claude-projects)
+Projects（2-1）は契約で利用可否が分かれます。確認時点では、CursorはPremium以上・Teams・Enterprise・旧有料プランで使え、Free・Plus・旧Hobbyと、Privacy Mode (Legacy)では使えません。Claude CodeはProとMaxのパブリックベータで、TeamとEnterpriseには未提供です。Projectの消費は通常セッションと同じ利用枠から引かれます。Claude Codeでは、新規Projectのthreadは既定でOpusの高effortで動き、公式も「単一セッションより利用枠を速く消費する」と書いています。Project settingsでthreadのモデルとeffortを変えられます。上限に達したthreadは次の利用枠の回復を待って自動で続行します。コーディネーターはCursorでは自動要約、Claude Codeでは直近のメッセージとthreadの報告、project memoryを見て会話を続けます。引き継ぎには、Claude Codeではproject memoryとproject instructionsを、CursorではProjectが同期する共有コンテキストのファイルを使います。[Cursor公式：Projects](https://cursor.com/docs/agent/projects)、[Claude Code公式：Projects](https://code.claude.com/docs/en/claude-projects)
 
 Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマンドクレジット、Enterpriseは契約単価のACU**です。消費は操作の数・複雑さやVM時間などに基づき、単純な経過時間課金ではありません。テスト待ちや応答待ちは、VM維持分などを除いて使用量に加算されないと説明されています。不要な探索・操作・試行錯誤を減らし、実際の利用量で比較します。[Devin公式：Billing](https://docs.devin.ai/admin/billing)、[Usage](https://docs.devin.ai/admin/billing/usage)
 
@@ -783,7 +860,7 @@ Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマン
 - [OpenAI：Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching) — モデル世代別の料金、明示的境界、usage。
 - [OpenAI：Conversation state](https://developers.openai.com/api/docs/guides/conversation-state) — 状態の保持と入力課金の区別。
 - [OpenAI：Reasoning models](https://developers.openai.com/api/docs/guides/reasoning) — 推論課金、出力上限、不完全な応答。
-- [Codex：Configuration Reference](https://developers.openai.com/codex/config-reference)、[AGENTS.md](https://developers.openai.com/codex/guides/agents-md)、[Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) — 設定と継承。
+- [Codex：Configuration Reference](https://developers.openai.com/codex/config-reference)、[AGENTS.md](https://developers.openai.com/codex/guides/agents-md)、[Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) — 設定と継承。確認日時点で、Codexの`developers.openai.com/codex/*`は`learn.chatgpt.com/docs/*`へ転送される。本ガイドの他のCodexリンクも同様。
 - [Claude Code：Permissions](https://code.claude.com/docs/en/permissions)、[Memory](https://code.claude.com/docs/en/memory)、[Environment variables](https://code.claude.com/docs/en/env-vars) — `.claudeignore`の訂正、指示の読込、出力上限の単位。
 - [Anthropic：Programmatic tool calling](https://platform.claude.com/docs/en/agents-and-tools/tool-use/programmatic-tool-calling) — ツール集約、24%削減と約8%増加の評価条件。
 - [Anthropic：Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)、[Effort](https://platform.claude.com/docs/en/build-with-claude/effort) — API固有の挙動とusage・stop_reasonの応答例。
