@@ -1,30 +1,30 @@
-# AIエージェントのトークン消費を最小化する実践ガイド
+# A Practical Guide to Minimizing Token Consumption in AI Agents
 
-日本語 | [English](./README.en.md)
+[日本語](./README.ja.md) | English
 
-![AIエージェントのトークン消費を最小化する実践ガイド](assets/x-card.png)
+![A Practical Guide to Minimizing Token Consumption in AI Agents](assets/x-card.png)
 
-AIエージェントの入力、コンテキスト、ツール実行、検証、モデル選択を見直し、無駄なトークン消費を減らすための実践ガイドです。目標は、必要な品質と完了時間を満たしながら、検証に合格したタスクあたりの総コストを下げることです。
+A practical guide to cutting wasteful token consumption by reviewing an AI agent's input, context, tool execution, verification, and model selection. The goal is to lower the total cost per task that passes verification, while meeting the required quality and completion time.
 
-全文は [ai-agent-token-guide.md](./ai-agent-token-guide.md) です。
+The full guide is in [ai-agent-token-guide.md](./ai-agent-token-guide.md). The Japanese original is [ai-agent-token-guide.ja.md](./ai-agent-token-guide.ja.md).
 
-## 8つの原則
+## The eight principles
 
-1. [入力を減らす](./ai-agent-token-guide.md#原則1入力を減らす)
-2. [コンテキストの寿命を管理する](./ai-agent-token-guide.md#原則2コンテキストの寿命を管理する)
-3. [往復を減らす](./ai-agent-token-guide.md#原則3往復を減らす)
-4. [やり直しを早く止める（タスク設計と検証器）](./ai-agent-token-guide.md#原則4やり直しを早く止めるタスク設計と検証器)
-5. [出力を減らす](./ai-agent-token-guide.md#原則5出力を減らす)
-6. [プロンプトキャッシュを壊さない](./ai-agent-token-guide.md#原則6プロンプトキャッシュを壊さない)
-7. [モデルと推論量を使い分ける](./ai-agent-token-guide.md#原則7モデルと推論量を使い分ける)
-8. [計測してから最適化する](./ai-agent-token-guide.md#原則8計測してから最適化する)
+1. [Reduce input](./ai-agent-token-guide.md#principle-1-reduce-input)
+2. [Manage context lifetime](./ai-agent-token-guide.md#principle-2-manage-context-lifetime)
+3. [Reduce round trips](./ai-agent-token-guide.md#principle-3-reduce-round-trips)
+4. [Stop rework early (task design and verifiers)](./ai-agent-token-guide.md#principle-4-stop-rework-early-task-design-and-verifiers)
+5. [Reduce output](./ai-agent-token-guide.md#principle-5-reduce-output)
+6. [Don't break the prompt cache](./ai-agent-token-guide.md#principle-6-dont-break-the-prompt-cache)
+7. [Match the model and reasoning effort to the task](./ai-agent-token-guide.md#principle-7-match-the-model-and-reasoning-effort-to-the-task)
+8. [Measure before you optimize](./ai-agent-token-guide.md#principle-8-measure-before-you-optimize)
 
-何から試すか迷ったら、[導入の優先順位チェックリスト](./ai-agent-token-guide.md#導入の優先順位チェックリスト)の「[今日できること](./ai-agent-token-guide.md#今日できること設定変更なし)」から始めてください。設定を変えずに試せる項目です。
+If you're not sure where to start, begin with "[What you can do today](./ai-agent-token-guide.md#what-you-can-do-today-no-configuration-changes)" in the [adoption priority checklist](./ai-agent-token-guide.md#adoption-priority-checklist). Those items don't require any configuration changes.
 
-間違っている点などがあったら、PRを送ってください。
+If you find any mistakes, please send a PR.
 
-## ライセンス
+## License
 
-文章と画像は [CC BY 4.0](./LICENSE)、ガイド内のコード例は [MIT](./LICENSE-CODE) で公開しています。
+The text and images are licensed under [CC BY 4.0](./LICENSE), and the code examples in the guide are licensed under [MIT](./LICENSE-CODE).
 
-2026年10月25日 · [Kinopee](https://x.com/kinopee_ai)
+October 25, 2026 · [Kinopee](https://x.com/kinopee_ai)
