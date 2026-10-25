@@ -113,7 +113,7 @@ Build artifacts, the contents of installed dependencies, and large generated fil
 
 This setting is a stronger restriction than saying "don't normally read these" in the request. Under the current spec, a `Read` deny also denies `Edit` and `Write` on the same paths, so revisit the targets for tasks that need them. Don't treat `Read` rules as complete access control over arbitrary programs run in the shell, or over MCP. Curbing exploration and protecting secrets are separate designs.
 
-Cursor's `.cursorignore` likewise applies differently to built-in reference features than to the terminal and MCP. If you need strong access control, combine the product's permission settings, OS permissions, and a sandbox. [Cursor docs: Ignore file](https://cursor.com/docs/reference/ignore-file)
+Cursor's `.cursorignore` does work: it blocks the listed files from Agent, Tab, and @ references. Because it blocks access rather than lowering search priority, keep it, like a `Read` deny, from covering files that some tasks need, such as lockfiles. It doesn't apply to the terminal or MCP. If you need strong access control, combine the product's permission settings, OS permissions, and a sandbox. [Cursor docs: Ignore file](https://cursor.com/docs/reference/ignore-file)
 
 In dedicated environments, place only the repositories you need. Splitting huge files by responsibility is worthwhile for maintainability too. Still, there's no need to start a sweeping restructuring just to save tokens in the short term.
 
@@ -786,7 +786,7 @@ First get the breakdown, then try one measure at a time, starting where costs ar
 
 - [ ] Check how much of your instruction files actually gets loaded, and move unnecessary always-on instructions into conditional or on-demand references.
 - [ ] Audit fixed procedures written for older models and duplicated verification instructions.
-- [ ] If you use `.claudeignore`, review its targets and purpose, and move them to a `Read` deny if needed.
+- [ ] If you use `.claudeignore`, review its targets and purpose, and move them to a `Read` deny if needed. Also check that `.cursorignore` doesn't block files that some tasks need to read.
 - [ ] Narrow routine exploration of generated artifacts and the like. Keep lockfiles accessible for tasks that need them.
 - [ ] Clean up unused MCP servers and plugins, taking deferred loading into account.
 - [ ] Decide what progress files and compaction should preserve: the goal, constraints, verification results, exact errors, and next action.
