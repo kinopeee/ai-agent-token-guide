@@ -128,6 +128,8 @@ AGENTS.md、CLAUDE.md、`.cursor/rules`などは、読み込まれた範囲が�
 
 Claude Code公式はCLAUDE.mdを各200行未満に収める目安を示しています。ただし行数はトークン数ではなく、他製品共通の上限でもありません。**CLAUDE.mdの`@path`インポートは参照先も一緒に読み込むため、分割だけでは削減になりません。** 必要時の参照と自動インポートを区別します。[Claude Code公式：Memory](https://code.claude.com/docs/en/memory)
 
+Codexでは、グローバル指示に加え、プロジェクトルートから現在の作業ディレクトリまでの各階層で指示ファイルを探します。同じ階層では`AGENTS.override.md`、`AGENTS.md`、設定した代替名の順に選び、最大1ファイルを読み込みます。結合サイズの上限`project_doc_max_bytes`は既定32 KiBで、トークン数ではありません。**分割先も読み込み経路にあれば、分割だけでは入力は減りません。** 共通の制約はルート、領域固有の規則は該当ディレクトリ、長い手順は必要時に読む文書やスキルへ置き、開始ディレクトリごとに読み込まれる指示を確認します。上限を小さくして必要な規則を落とす方法は避けます。[Codex公式：AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+
 Cursorでは、プレーンなMarkdownで指示を置くならAGENTS.mdを使います。製品固有のプロジェクトルールは`.cursor/rules/`内の`.mdc`ファイルで、通常の`.md`を同じ場所へ置くだけではプロジェクトルールになりません。[Cursor公式：Rules](https://cursor.com/docs/rules)
 
 ```markdown
@@ -217,6 +219,8 @@ Claude Codeの`BASH_MAX_OUTPUT_LENGTH`は**文字数**、`MAX_MCP_OUTPUT_TOKENS`
 Claude Codeの`/clear`、Cursorの新規チャットやCLIの`/clear`などを使います。`/resume`は過去の会話の再開であり、履歴を小さくする操作ではありません。引き継ぎが必要なら、次の2-3の形式で保存します。
 
 CursorとClaude Codeの「Projects」のようなコーディネーター方式は、タスクごとに新しいコンテキストのワーカーを起動し、この区切りを自動化します。ただし総消費は減りません。コーディネーターがワーカーの報告を読んで判断する分、並列ワーカー、PR監視の再起動分が加わります。キャッシュが切れた古いワーカーへの追加指示は会話全体の読み直しになるため、新しい作業なら新規ワーカーのほうが安いことがあります。共有される指示や記憶はProjectとともに育つので、原則1の指示ファイルの肥大化がProject単位で起きていないかも見直します。提供条件、既定モデル、利用枠への影響は「製品の利用枠とAPI課金を混同しない」と対応表にまとめています。
+
+Codexでも、同じ不具合の追加調査は現在の会話を継続し、無関係な実装へ移るなら必要事項を引き継いで新規会話を始めます。同じ長期タスクで文脈が膨らんだ場合は、2-4の保存項目を残して`/compact`を検討します。再開、新規開始、圧縮は別の操作で、圧縮は利用枠をリセットしません。新規会話でも共通指示やコードの再読が必要なため、切り替え前後の消費を含めて比較します。[Codex公式：Developer commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli)
 
 ### 2-2. サブエージェントは、隔離の便益が上回るときに使う
 
@@ -642,6 +646,8 @@ Claude Codeでは子の`model`、Codexでは`.codex/agents/`の設定、Cursor�
 
 小型モデルで失敗したら無制限に粘らず、検証失敗回数や新しい根拠の有無で上位モデルへ切り替える基準を決めます。その前の失敗費用も総額に含めます。
 
+Codex CLIのプロファイル形式と比較手順は、後述の「Codex CLIでの実践例」に示します。
+
 ### 7-3. オープンウェイトは総運用費で比較する
 
 **単価ではなく、代表タスクでの成功率・待ち時間・運用費を含めた総額で比較してから採用する。**
@@ -713,6 +719,8 @@ task_id / attempt_id / parent_task_id
 検証対象の版 / 検証結果 / 成功・失敗・未完了 / 再試行・差し戻し
 ```
 
+Codex CLIでは、`/status`で残りの利用枠を、[利用状況ダッシュボード](https://chatgpt.com/codex/settings/usage)で消費傾向を確認します。コンテキストの占有率は「今の入力の大きさ」、累積トークンは「これまでの処理量」、利用枠の残量は「契約上あとどれだけ使えるか」で、相互に直接換算しません。詳細ログを集計するなら、イベントの値が差分か累積かを確認し、親子・再開分を含めつつ同じイベントを二重計上しないようにします。複数の会話を同時に動かした期間のアカウント残量差を、一つのタスクの消費と見なさないでください。[Codex公式：Pricing](https://learn.chatgpt.com/docs/pricing)
+
 ### 8-3. 同じ条件で、1施策ずつ比較する
 
 **タスク群と受け入れ条件を固定し、1施策だけ変えて、失敗を含む総額・合格率・完了時間で採否を決める。**
@@ -752,7 +760,7 @@ task_id / attempt_id / parent_task_id
 | キャッシュ（6） | 製品側の制御。利用者は不要な変更や再起動の影響を計測 | 製品側の制御。任意のAPI設定を直接操作できるとは限らない | 利用モデルと製品側の制御に依存 | OpenAI・Anthropic・Googleのモデル/API別仕様で設定 |
 | モデル切替（7） | `/model`、子の`model` | モデル選択、`--profile`、子の`model` | 親はモデル選択やAuto、子は`model`等。プラン・管理者制限で代替モデルになる場合あり | リクエストやタスク単位でルーティング |
 | 推論量（7） | 対応するeffort/thinking設定 | `model_reasoning_effort`等 | 選択モデルが提供する設定に従う | モデル別のreasoning/thinking設定 |
-| 計測（8） | `/usage`、`/context`、ログ、トレース | 利用量表示、ログ、対応する集計ツール | Usage画面、契約に応じたダッシュボード | usage、料金、成功率、完了時間を関連付ける |
+| 計測（8） | `/usage`、`/context`、ログ、トレース | `/status`、利用状況ダッシュボード、ログ。残量と累積トークンを区別 | Usage画面、契約に応じたダッシュボード | usage、料金、成功率、完了時間を関連付ける |
 
 Claude Codeは[Memory](https://code.claude.com/docs/en/memory)、[Permissions](https://code.claude.com/docs/en/permissions)、[Hooks](https://code.claude.com/docs/en/hooks)、[CLI reference](https://code.claude.com/docs/en/cli-reference)、[Subagents](https://code.claude.com/docs/en/sub-agents)を参照してください。Codexは[AGENTS.md](https://developers.openai.com/codex/guides/agents-md)、[Configuration Reference](https://developers.openai.com/codex/config-reference)、[Hooks](https://developers.openai.com/codex/hooks)、[Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)、[Developer commands](https://developers.openai.com/codex/cli/slash-commands)が対応します。Cursorは[Rules](https://cursor.com/docs/rules)、[Ignore file](https://cursor.com/docs/reference/ignore-file)、[Hooks](https://cursor.com/docs/hooks)、[Subagents](https://cursor.com/docs/subagents)、[CLI Slash commands](https://cursor.com/docs/cli/reference/slash-commands)を参照してください。
 
@@ -760,11 +768,46 @@ Gemini CLIなど、表にない製品にも8原則を適用できますが、設
 
 ### 製品の利用枠とAPI課金を混同しない
 
+Codexは、ChatGPTでサインインして使う場合の利用枠・追加クレジットと、APIキーで使う場合のAPI課金を分けます。**Codexのクレジット課金には独立したキャッシュ書き込み料金がありません。** 原則6のOpenAI APIの書き込み料金をそのまま適用せず、APIキー利用にはAPI料金表、クレジット利用にはCodexの料金表を使います。クレジット単価だけではサブスクリプション内の利用枠消費を決められないため、実際の残量は製品表示で確認します。[Codex公式：Pricing](https://learn.chatgpt.com/docs/pricing)
+
 Cursorは契約によって利用枠と追加料金が異なります。確認時点のThe X Subscriptionには、Cursorモデル向けの週次の共有利用枠と、サードパーティモデル等に使うクレジットがあり、既存の旧プランは別方式です。トークンの推定料金を、そのまま自分の支払額や残量へ換算しないでください。[Cursor公式：Models & Pricing](https://cursor.com/docs/models-and-pricing)
 
 Projects（2-1）は契約で利用可否が分かれます。確認時点では、CursorはPremium以上・Teams・Enterprise・旧有料プランで使え、Free・Plus・旧Hobbyと、Privacy Mode (Legacy)では使えません。Claude CodeはProとMaxのパブリックベータで、TeamとEnterpriseには未提供です。Projectの消費は通常セッションと同じ利用枠から引かれます。Claude Codeでは、新規Projectのthreadは既定でOpusの高effortで動き、公式も「単一セッションより利用枠を速く消費する」と書いています。Project settingsでthreadのモデルとeffortを変えられます。上限に達したthreadは次の利用枠の回復を待って自動で続行します。コーディネーターはCursorでは自動要約、Claude Codeでは直近のメッセージとthreadの報告、project memoryを見て会話を続けます。引き継ぎには、Claude Codeではproject memoryとproject instructionsを、CursorではProjectが同期する共有コンテキストのファイルを使います。[Cursor公式：Projects](https://cursor.com/docs/agent/projects)、[Claude Code公式：Projects](https://code.claude.com/docs/en/claude-projects)
 
 Devinの**Self-serve（Free、Pro、Max、Teams）は利用枠とオンデマンドクレジット、Enterpriseは契約単価のACU**です。消費は操作の数・複雑さやVM時間などに基づき、単純な経過時間課金ではありません。テスト待ちや応答待ちは、VM維持分などを除いて使用量に加算されないと説明されています。不要な探索・操作・試行錯誤を減らし、実際の利用量で比較します。[Devin公式：Billing](https://docs.devin.ai/admin/billing)、[Usage](https://docs.devin.ai/admin/billing/usage)
+
+## Codex CLIでの実践例
+
+**認証方式と使用量を確認し、推論量だけを変え、同じ完了条件で比較する。**
+
+以下は2026年10月25日の公式仕様に基づく設定例です。プロファイルの形式はCodex CLI 0.134.0以降を対象にします。特定版での実行検証や削減率の測定結果ではありません。デスクトップやクラウドに同じ設定が適用されるとは仮定しません。
+
+1. `codex --version`と`codex login status`でCLIの版と認証方式を記録します。ChatGPTの利用枠、クレジット、API料金のどれを評価するかを決め、8-2の表示・ログで基準値を取ります。
+2. 同じモデル、開始ディレクトリ、対象コード、依頼文、完了条件を使います。AGENTS.mdの読み込み範囲と他の設定もそろえます。
+3. 次の2ファイルを用意し、別々の試行で比較します。既存ファイルがあれば必要な項目を統合します。モデルは共通設定から引き継ぐため、同じ実IDであることと`medium`・`high`の対応を確認します。
+
+```toml
+# ~/.codex/standard.config.toml
+model_reasoning_effort = "medium"
+```
+
+```toml
+# ~/.codex/investigate.config.toml
+model_reasoning_effort = "high"
+```
+
+```bash
+codex --profile standard
+# 別の比較試行で起動する
+codex --profile investigate
+```
+
+0.134.0以降は`config.toml`内の`[profiles.name]`ではなく、個別の`~/.codex/name.config.toml`を使います。プロジェクト設定やコマンドライン指定で値が上書きされる場合があるため、起動後の有効なモデルと推論量を確認します。対応モデルで回答だけ短くしたい場合は`model_verbosity = "low"`も候補ですが、推論量とは別施策として比較します。[Codex公式：Profiles](https://learn.chatgpt.com/docs/config-file/config-advanced#profiles)、[Configuration Reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+
+4. 失敗・再試行・子の消費を含む総量、合格率、完了時間を記録します。低い推論量で原因仮説が進まない、または要件の見落としによる検証失敗が続くなら、高い設定を試します。権限不足や外部障害は推論量を上げても解決しないため、別に対処します。
+5. 同じ修正の続きは会話を継続し、独立した作業は新規会話へ移します。長い単一タスクを圧縮する前には、正確なエラー、変更、検証結果、次の行動を保存します。比較試行では圧縮の有無やキャッシュの状態も記録します。
+
+この例は推論量の比較から始めます。指示の短縮、ツール出力の整形、モデル変更を同時に入れず、原則8の手順で1施策ずつ採否を決めます。
 
 ## 導入の優先順位チェックリスト
 
