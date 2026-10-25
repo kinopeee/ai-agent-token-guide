@@ -130,6 +130,8 @@ With AGENTS.md, CLAUDE.md, `.cursor/rules`, and similar files, whatever gets loa
 
 The official Claude Code docs suggest keeping each CLAUDE.md under 200 lines. But line count is not token count, and it isn't a limit shared by other products. **`@path` imports in CLAUDE.md load the referenced files as well, so splitting alone saves nothing.** Distinguish between referencing a file when needed and importing it automatically. [Claude Code docs: Memory](https://code.claude.com/docs/en/memory)
 
+In Codex, global instructions are combined with instruction files discovered along the path from the project root to the current working directory. At each directory, Codex selects at most one file, checking `AGENTS.override.md`, then `AGENTS.md`, then configured fallback names. The combined-size limit, `project_doc_max_bytes`, defaults to 32 KiB, not a token count. **Splitting files does not reduce input if the resulting files are still on the discovery path.** Keep shared constraints at the root, area-specific rules in their directories, and long procedures in documents or skills read on demand. Check which instructions load from each starting directory; don't lower the cap to discard necessary rules. [Codex docs: AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+
 In Cursor, use AGENTS.md for instructions in plain Markdown. Product-specific project rules are `.mdc` files in `.cursor/rules/`; putting a regular `.md` file in the same place doesn't make it a project rule. [Cursor docs: Rules](https://cursor.com/docs/rules)
 
 ```markdown
@@ -219,6 +221,8 @@ If you move on to an unrelated UI adjustment after fixing an auth bug, a new ses
 Use Claude Code's `/clear`, a new chat in Cursor, `/clear` in the Cursor CLI, and so on. `/resume` resumes a past conversation; it doesn't shrink the history. If you need a handoff, save it in the format described in section 2-3.
 
 Coordinator-style features such as "Projects" in Cursor and Claude Code automate this separation by launching a worker with a fresh context for each task. They don't reduce total consumption, though. The coordinator reading worker reports and making decisions adds cost, as do parallel workers and restarts for PR monitoring. Sending more instructions to an old worker whose cache has expired means rereading the entire conversation, so for new work a fresh worker can be cheaper. Shared instructions and memory grow along with the Project, so also check whether the instruction-file bloat discussed in Principle 1 is happening at the Project level. Availability, default models, and the impact on usage allowances are summarized in "Don't confuse product usage allowances with API billing" and in the comparison table.
+
+In Codex, continue the current conversation for follow-up investigation of the same bug, and start a new conversation with a handoff for unrelated implementation work. For a single long task with growing context, preserve the state listed in section 2-4 and consider `/compact`. Resuming, starting fresh, and compacting are different operations; compaction does not reset usage allowances. A new conversation still needs shared instructions and may reread code, so include both sides of the switch in the comparison. [Codex docs: Developer commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli)
 
 ### 2-2. Use subagents when the benefit of isolation outweighs the cost
 
@@ -644,6 +648,8 @@ Prepare setups such as "routine edits," "regular implementation," and "hard prob
 
 When a small model fails, don't keep at it indefinitely; decide on criteria for switching to a stronger model, such as the number of verification failures or whether new evidence is emerging. Include the cost of the earlier failures in the total.
 
+See “A practical Codex CLI workflow” below for the profile format and comparison procedure.
+
 ### 7-3. Compare open-weight models on total operating cost
 
 **Before adopting one, compare on the total cost, including success rate, latency, and operating costs on representative tasks, rather than on unit price.**
@@ -715,6 +721,8 @@ model calls / tool calls / elapsed time / cost (measured or estimated)
 version under verification / verification result / success, failure, or incomplete / retries and sent-back work
 ```
 
+In Codex CLI, use `/status` for remaining allowances and the [usage dashboard](https://chatgpt.com/codex/settings/usage) for consumption trends. Context occupancy measures the current input size; cumulative tokens measure processing so far; remaining allowance measures available plan capacity. Don't convert these directly into one another. When aggregating detailed logs, check whether event values are incremental or cumulative, include child and resumed sessions, and deduplicate events. If several conversations ran concurrently, don't attribute the account-wide allowance change to a single task. [Codex docs: Pricing](https://learn.chatgpt.com/docs/pricing)
+
 ### 8-3. Compare one change at a time under the same conditions
 
 **Fix the task set and acceptance criteria, change just one thing, and decide whether to adopt it based on total cost including failures, pass rate, and completion time.**
@@ -754,7 +762,7 @@ This table compares where each principle is implemented. It was checked against 
 | Caching (6) | Controlled by the product. Users measure the impact of unnecessary changes and restarts | Controlled by the product. You can't necessarily set arbitrary API parameters directly | Depends on the model in use and the product's own controls | Configure per the model- and API-specific specs of OpenAI, Anthropic, and Google |
 | Model switching (7) | `/model`, `model` for subagents | Model selection, `--profile`, `model` for subagents | Model selection or Auto for the parent; `model` etc. for children. Plan or admin restrictions may mean a substitute model is used | Route per request or per task |
 | Reasoning effort (7) | Supported effort/thinking settings | `model_reasoning_effort` etc. | Follow the settings the selected model offers | Per-model reasoning/thinking settings |
-| Measurement (8) | `/usage`, `/context`, logs, traces | Usage display, logs, supported aggregation tools | Usage page, dashboards depending on your plan | Link usage, cost, success rate, and completion time |
+| Measurement (8) | `/usage`, `/context`, logs, traces | `/status`, usage dashboard, and logs; distinguish allowances from cumulative tokens | Usage page, dashboards depending on your plan | Link usage, cost, success rate, and completion time |
 
 For Claude Code, see [Memory](https://code.claude.com/docs/en/memory), [Permissions](https://code.claude.com/docs/en/permissions), [Hooks](https://code.claude.com/docs/en/hooks), [CLI reference](https://code.claude.com/docs/en/cli-reference), and [Subagents](https://code.claude.com/docs/en/sub-agents). For Codex, the corresponding pages are [AGENTS.md](https://developers.openai.com/codex/guides/agents-md), [Configuration Reference](https://developers.openai.com/codex/config-reference), [Hooks](https://developers.openai.com/codex/hooks), [Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents), and [Developer commands](https://developers.openai.com/codex/cli/slash-commands). For Cursor, see [Rules](https://cursor.com/docs/rules), [Ignore file](https://cursor.com/docs/reference/ignore-file), [Hooks](https://cursor.com/docs/hooks), [Subagents](https://cursor.com/docs/subagents), and [CLI Slash commands](https://cursor.com/docs/cli/reference/slash-commands).
 
@@ -762,11 +770,46 @@ The eight principles also apply to products not in the table, such as Gemini CLI
 
 ### Don't confuse product usage allowances with API billing
 
+For Codex, distinguish the included allowance and additional credits used with ChatGPT sign-in from API billing with an API key. **Codex credit billing has no separate cache-write charge.** Don't apply the OpenAI API cache-write rates in principle 6 to it: use API pricing for API-key usage and Codex rates for credit usage. Credit rates alone don't determine consumption of the included subscription allowance; check the product's actual remaining-limit display. [Codex docs: Pricing](https://learn.chatgpt.com/docs/pricing)
+
 In Cursor, usage allowances and extra charges vary by plan. As of this review, The X Subscription includes a weekly shared allowance for Cursor models and credits for third-party models and the like, while existing legacy plans work differently. Don't convert estimated token costs directly into what you pay or how much allowance you have left. [Cursor docs: Models & Pricing](https://cursor.com/docs/models-and-pricing)
 
 Whether you can use Projects (section 2-1) depends on your plan. As of this review, Cursor offers it on Premium and above, Teams, Enterprise, and legacy paid plans, but not on Free, Plus, or legacy Hobby, or with Privacy Mode (Legacy). Claude Code offers it as a public beta on Pro and Max; it isn't yet available on Team or Enterprise. Project usage comes out of the same allowance as regular sessions. In Claude Code, threads in a new Project run on Opus at high effort by default, and the official docs note that this uses up your allowance faster than a single session. You can change a thread's model and effort in Project settings. A thread that hits its limit waits for the next allowance reset and then continues automatically. The coordinator keeps the conversation going with automatic summarization in Cursor, and with recent messages, thread reports, and project memory in Claude Code. For handoffs, Claude Code uses project memory and project instructions, and Cursor uses the shared-context files that the Project syncs. [Cursor docs: Projects](https://cursor.com/docs/agent/projects), [Claude Code docs: Projects](https://code.claude.com/docs/en/claude-projects)
 
 Devin's **Self-serve plans (Free, Pro, Max, Teams) use usage allowances plus on-demand credits, and Enterprise uses ACUs at contracted rates**. Consumption is based on factors such as the number and complexity of operations and VM time; it isn't simply billed by elapsed time. The docs explain that waiting for tests or responses isn't added to usage, apart from things like keeping the VM running. Cut unnecessary exploration, operations, and trial and error, and compare using actual usage. [Devin docs: Billing](https://docs.devin.ai/admin/billing), [Usage](https://docs.devin.ai/admin/billing/usage)
+
+## A practical Codex CLI workflow
+
+**Check authentication and usage, change only reasoning effort, and compare against the same completion criteria.**
+
+This configuration example follows the official specifications checked on October 25, 2026. The profile format targets Codex CLI 0.134.0 and later. It is not a report of execution tests on a specific version or measured savings. Don't assume the same settings apply to desktop or cloud execution.
+
+1. Record the CLI version and authentication mode with `codex --version` and `codex login status`. Decide whether you are evaluating the ChatGPT allowance, credits, or API charges, then collect a baseline using the displays and logs in section 8-2.
+2. Hold the model, starting directory, target code, prompt, and completion criteria constant. Keep the AGENTS.md discovery scope and other settings consistent too.
+3. Create the following two files and compare them in separate trials. Merge the relevant settings if files already exist. The model is inherited from the shared configuration, so verify that the actual model ID is the same and supports both `medium` and `high`.
+
+```toml
+# ~/.codex/standard.config.toml
+model_reasoning_effort = "medium"
+```
+
+```toml
+# ~/.codex/investigate.config.toml
+model_reasoning_effort = "high"
+```
+
+```bash
+codex --profile standard
+# Start a separate comparison trial
+codex --profile investigate
+```
+
+From 0.134.0 onward, use separate `~/.codex/name.config.toml` files, not `[profiles.name]` tables in `config.toml`. Project settings and command-line overrides can take precedence, so check the effective model and effort after starting. For supported models, `model_verbosity = "low"` is an option for shorter answers, but evaluate it separately from reasoning effort. [Codex docs: Profiles](https://learn.chatgpt.com/docs/config-file/config-advanced#profiles), [Configuration Reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+
+4. Record total consumption including failures, retries, and children, along with pass rate and completion time. Try higher effort if lower effort stalls on causal hypotheses or repeatedly misses requirements that verification catches. Permission failures and external outages need separate remedies, not higher reasoning effort.
+5. Continue the conversation for follow-up work on the same fix; start fresh for independent tasks. Before compacting a long single task, save exact errors, changes, verification results, and the next action. Record compaction and cache conditions during comparison trials too.
+
+This example starts with reasoning effort. Don't shorten instructions, trim tool output, and switch models at the same time; use principle 8 to evaluate one change at a time.
 
 ## Adoption priority checklist
 
