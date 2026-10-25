@@ -1,5 +1,7 @@
 # AIエージェントのトークン消費を最小化する実践ガイド
 
+日本語 | [English](./ai-agent-token-guide.en.md)
+
 2026年10月25日 · [Kinopee](https://x.com/kinopee_ai)
 
 ## このガイドについて
