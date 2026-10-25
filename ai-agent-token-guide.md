@@ -1,4 +1,4 @@
-# A Practical Guide to Minimizing Token Consumption in AI Agents
+# A Design Guide to Minimizing Token Consumption in AI Agents
 
 [日本語](./ai-agent-token-guide.ja.md) | English
 
@@ -8,7 +8,7 @@ This English edition is translated from the Japanese original. If the two versio
 
 ## About this guide
 
-This is a practical guide to cutting wasteful token consumption by reviewing an AI agent's input, context, tool execution, verification, and model selection. It covers any setup in which models and tools work together, such as Claude Code, Codex CLI, Cursor, Gemini CLI, Devin, and custom-built agents. The ideas carry over, but setting names, billing, and available features differ by product, model, and version.
+This is a design guide to cutting wasteful token consumption by reviewing an AI agent's input, context, tool execution, verification, and model selection. It covers any setup in which models and tools work together, such as Claude Code, Codex CLI, Cursor, Gemini CLI, Devin, and custom-built agents. The ideas carry over, but setting names, billing, and available features differ by product, model, and version.
 
 The goal is to **lower the total cost per task that passes verification, while meeting the required quality and completion time**. Shorter input is not an improvement if it brings more failures and reruns. Measure token counts, money, usage allowances, and wait time separately.
 

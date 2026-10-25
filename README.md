@@ -1,10 +1,10 @@
-# A Practical Guide to Minimizing Token Consumption in AI Agents
+# A Design Guide to Minimizing Token Consumption in AI Agents
 
 [日本語](./README.ja.md) | English
 
-![A Practical Guide to Minimizing Token Consumption in AI Agents](assets/x-card.png)
+![A Design Guide to Minimizing Token Consumption in AI Agents](assets/x-card.png)
 
-A practical guide to cutting wasteful token consumption by reviewing an AI agent's input, context, tool execution, verification, and model selection. The goal is to lower the total cost per task that passes verification, while meeting the required quality and completion time.
+A design guide to cutting wasteful token consumption by reviewing an AI agent's input, context, tool execution, verification, and model selection. The goal is to lower the total cost per task that passes verification, while meeting the required quality and completion time.
 
 The full guide is in [ai-agent-token-guide.md](./ai-agent-token-guide.md). The Japanese original is [ai-agent-token-guide.ja.md](./ai-agent-token-guide.ja.md).
 
